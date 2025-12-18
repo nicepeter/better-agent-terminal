@@ -6,6 +6,7 @@ interface ThumbnailBarProps {
   focusedTerminalId: string | null
   onFocus: (id: string) => void
   onAddTerminal?: () => void
+  onRenameTerminal?: (id: string, alias: string) => void
   showAddButton: boolean
 }
 
@@ -14,6 +15,7 @@ export function ThumbnailBar({
   focusedTerminalId,
   onFocus,
   onAddTerminal,
+  onRenameTerminal,
   showAddButton
 }: ThumbnailBarProps) {
   const label = terminals.length > 0 && terminals[0].type === 'claude-code'
@@ -32,6 +34,7 @@ export function ThumbnailBar({
             terminal={terminal}
             isActive={terminal.id === focusedTerminalId}
             onClick={() => onFocus(terminal.id)}
+            onRename={onRenameTerminal}
           />
         ))}
         {showAddButton && onAddTerminal && (

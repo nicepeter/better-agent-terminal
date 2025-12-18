@@ -55,6 +55,7 @@ export function Sidebar({
   const inputRef = useRef<HTMLInputElement>(null)
   const roleMenuRef = useRef<HTMLDivElement>(null)
   const colorMenuRef = useRef<HTMLDivElement>(null)
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -62,6 +63,15 @@ export function Sidebar({
       inputRef.current.select()
     }
   }, [editingId])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current)
+      }
+    }
+  }, [])
 
   // Close role menu when clicking outside
   useEffect(() => {
@@ -141,8 +151,32 @@ export function Sidebar({
     setCustomTextColor('')
   }
 
+  const handleWorkspaceClick = (workspace: Workspace) => {
+    // If already editing, don't switch
+    if (editingId) return
+
+    // Clear any pending click timer
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current)
+      clickTimerRef.current = null
+    }
+
+    // Delay the selection to allow double-click to cancel it
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null
+      onSelectWorkspace(workspace.id)
+    }, 250)
+  }
+
   const handleDoubleClick = (workspace: Workspace, e: React.MouseEvent) => {
     e.stopPropagation()
+
+    // Cancel the pending single-click selection
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current)
+      clickTimerRef.current = null
+    }
+
     setEditingId(workspace.id)
     setEditValue(workspace.alias || workspace.name)
   }
@@ -168,7 +202,7 @@ export function Sidebar({
           <div
             key={workspace.id}
             className={`workspace-item ${workspace.id === activeWorkspaceId ? 'active' : ''}`}
-            onClick={() => onSelectWorkspace(workspace.id)}
+            onClick={() => handleWorkspaceClick(workspace)}
           >
             <div className="workspace-item-content">
               <div

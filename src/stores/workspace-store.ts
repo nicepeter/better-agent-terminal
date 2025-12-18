@@ -155,6 +155,18 @@ class WorkspaceStore {
     this.notify()
   }
 
+  renameTerminal(id: string, alias: string): void {
+    this.state = {
+      ...this.state,
+      terminals: this.state.terminals.map(t =>
+        t.id === id ? { ...t, alias: alias.trim() || undefined } : t
+      )
+    }
+
+    this.notify()
+    this.save()
+  }
+
   setFocusedTerminal(id: string | null): void {
     if (this.state.focusedTerminalId === id) return
 

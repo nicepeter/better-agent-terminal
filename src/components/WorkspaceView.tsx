@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import type { Workspace, TerminalInstance } from '../types'
 import { workspaceStore } from '../stores/workspace-store'
 import { settingsStore } from '../stores/settings-store'
@@ -24,6 +24,9 @@ async function getShellFromSettings(): Promise<string | undefined> {
 
 export function WorkspaceView({ workspace, terminals, focusedTerminalId }: WorkspaceViewProps) {
   const [showCloseConfirm, setShowCloseConfirm] = useState<string | null>(null)
+  const [editingTerminalId, setEditingTerminalId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const claudeCode = terminals.find(t => t.type === 'claude-code')
   const regularTerminals = terminals.filter(t => t.type === 'terminal')
@@ -115,6 +118,39 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
     workspaceStore.setFocusedTerminal(id)
   }, [])
 
+  const handleRenameTerminal = useCallback((id: string, alias: string) => {
+    workspaceStore.renameTerminal(id, alias)
+  }, [])
+
+  // Focus input when editing
+  useEffect(() => {
+    if (editingTerminalId && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editingTerminalId])
+
+  const handleTitleDoubleClick = useCallback((terminal: TerminalInstance, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditValue(terminal.alias || terminal.title)
+    setEditingTerminalId(terminal.id)
+  }, [])
+
+  const handleTitleRenameSubmit = useCallback(() => {
+    if (editingTerminalId) {
+      workspaceStore.renameTerminal(editingTerminalId, editValue)
+    }
+    setEditingTerminalId(null)
+  }, [editingTerminalId, editValue])
+
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleTitleRenameSubmit()
+    } else if (e.key === 'Escape') {
+      setEditingTerminalId(null)
+    }
+  }, [handleTitleRenameSubmit])
+
   // Determine what to show in thumbnail bar
   const mainTerminal = focusedTerminal || claudeCode
   const thumbnailTerminals = isClaudeCodeFocused
@@ -132,9 +168,25 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
           >
             <div className="main-panel">
               <div className="main-panel-header">
-                <div className={`main-panel-title ${terminal.type === 'claude-code' ? 'claude-code' : ''}`}>
+                <div
+                  className={`main-panel-title ${terminal.type === 'claude-code' ? 'claude-code' : ''}`}
+                  onDoubleClick={(e) => handleTitleDoubleClick(terminal, e)}
+                >
                   {terminal.type === 'claude-code' && <span>✦</span>}
-                  <span>{terminal.title}</span>
+                  {editingTerminalId === terminal.id ? (
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      className="terminal-rename-input main-panel-rename"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={handleTitleRenameSubmit}
+                      onKeyDown={handleTitleKeyDown}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span>{terminal.alias || terminal.title}</span>
+                  )}
                 </div>
                 <div className="main-panel-actions">
                   <ActivityIndicator
@@ -175,6 +227,7 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
         focusedTerminalId={focusedTerminalId}
         onFocus={handleFocus}
         onAddTerminal={isClaudeCodeFocused ? handleAddTerminal : undefined}
+        onRenameTerminal={handleRenameTerminal}
         showAddButton={isClaudeCodeFocused}
       />
 
