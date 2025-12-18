@@ -19,6 +19,7 @@ interface SidebarProps {
 }
 
 const PRESET_COLORS = [
+  // Dark themes
   { id: 'default', label: 'Default', bg: undefined, text: undefined },
   { id: 'dark', label: 'Dark', bg: '#1a1a2e', text: '#eaeaea' },
   { id: 'midnight', label: 'Midnight', bg: '#0f0f23', text: '#cccccc' },
@@ -27,6 +28,11 @@ const PRESET_COLORS = [
   { id: 'sunset', label: 'Sunset', bg: '#2d1b1b', text: '#f0c8a8' },
   { id: 'purple', label: 'Purple', bg: '#1e1a2e', text: '#d4b8f0' },
   { id: 'coffee', label: 'Coffee', bg: '#1f1814', text: '#d4c4b0' },
+  // Light themes (softer, muted colors)
+  { id: 'cream', label: 'Cream', bg: '#e8e4d9', text: '#4a4540' },
+  { id: 'mint', label: 'Mint', bg: '#c8d9c8', text: '#2d4a2d' },
+  { id: 'sky', label: 'Sky', bg: '#c4d4e0', text: '#2c4a5e' },
+  { id: 'lavender', label: 'Lavender', bg: '#d4cce0', text: '#4a3d5c' },
 ] as const
 
 function getRoleColor(role?: string): string {
