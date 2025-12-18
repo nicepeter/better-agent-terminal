@@ -36,7 +36,9 @@ body {
 
 /* Sidebar */
 .sidebar {
-  width: 200px;
+  width: 220px;
+  min-width: 180px;
+  max-width: 280px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -126,6 +128,7 @@ body {
   gap: 2px;
   min-width: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .workspace-alias {
@@ -164,6 +167,21 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
+}
+
+.workspace-name-row .workspace-alias {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .workspace-role-badge {
@@ -288,7 +306,9 @@ body {
 .workspace-item-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .workspace-item:hover {
@@ -729,6 +749,69 @@ body {
 .sidebar-footer-buttons .settings-btn {
   flex: 1;
   margin-top: 0;
+}
+
+/* Confirm Dialog */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  width: 320px;
+  max-width: 90vw;
+}
+
+.confirm-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.confirm-message {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.confirm-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.confirm-btn:hover {
+  background: var(--bg-hover);
+}
+
+.confirm-btn.danger {
+  background: var(--danger-color);
+  border-color: var(--danger-color);
+  color: white;
+}
+
+.confirm-btn.danger:hover {
+  background: #c0392b;
 }
 
 /* Settings Panel */

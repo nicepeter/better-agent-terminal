@@ -28,11 +28,11 @@ const PRESET_COLORS = [
   { id: 'sunset', label: 'Sunset', bg: '#2d1b1b', text: '#f0c8a8' },
   { id: 'purple', label: 'Purple', bg: '#1e1a2e', text: '#d4b8f0' },
   { id: 'coffee', label: 'Coffee', bg: '#1f1814', text: '#d4c4b0' },
-  // Light themes (softer, muted colors)
-  { id: 'cream', label: 'Cream', bg: '#e8e4d9', text: '#4a4540' },
-  { id: 'mint', label: 'Mint', bg: '#c8d9c8', text: '#2d4a2d' },
-  { id: 'sky', label: 'Sky', bg: '#c4d4e0', text: '#2c4a5e' },
-  { id: 'lavender', label: 'Lavender', bg: '#d4cce0', text: '#4a3d5c' },
+  // Light themes (softer, muted colors with darker text)
+  { id: 'cream', label: 'Cream', bg: '#e8e4d9', text: '#2a2520' },
+  { id: 'mint', label: 'Mint', bg: '#c8d9c8', text: '#1a2a1a' },
+  { id: 'sky', label: 'Sky', bg: '#c4d4e0', text: '#1a2a3a' },
+  { id: 'lavender', label: 'Lavender', bg: '#d4cce0', text: '#2a2035' },
 ] as const
 
 function getRoleColor(role?: string): string {
@@ -65,6 +65,7 @@ export function Sidebar({
   const [isDragOver, setIsDragOver] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const roleMenuRef = useRef<HTMLDivElement>(null)
   const colorMenuRef = useRef<HTMLDivElement>(null)
@@ -332,26 +333,28 @@ export function Sidebar({
                   <>
                     <div className="workspace-name-row">
                       <span className="workspace-alias">{workspace.alias || workspace.name}</span>
-                      <span
-                        className="workspace-role-badge"
-                        style={{
-                          backgroundColor: getRoleColor(workspace.role),
-                          opacity: workspace.role ? 1 : 0.3
-                        }}
-                        onClick={(e) => handleRoleClick(workspace.id, e)}
-                        title={workspace.role || 'Click to set role'}
-                      >
-                        {workspace.role || '＋'}
-                      </span>
-                      <span
-                        className="workspace-color-badge"
-                        style={{
-                          backgroundColor: workspace.backgroundColor || '#1e1e1e',
-                          borderColor: workspace.textColor || '#cccccc'
-                        }}
-                        onClick={(e) => handleColorClick(workspace.id, e)}
-                        title="Set terminal colors"
-                      />
+                      <div className="workspace-badges">
+                        <span
+                          className="workspace-role-badge"
+                          style={{
+                            backgroundColor: getRoleColor(workspace.role),
+                            opacity: workspace.role ? 1 : 0.3
+                          }}
+                          onClick={(e) => handleRoleClick(workspace.id, e)}
+                          title={workspace.role || 'Click to set role'}
+                        >
+                          {workspace.role || '＋'}
+                        </span>
+                        <span
+                          className="workspace-color-badge"
+                          style={{
+                            backgroundColor: workspace.backgroundColor || '#1e1e1e',
+                            borderColor: workspace.textColor || '#cccccc'
+                          }}
+                          onClick={(e) => handleColorClick(workspace.id, e)}
+                          title="Set terminal colors"
+                        />
+                      </div>
                     </div>
                     <span className="workspace-folder">{workspace.name}</span>
                   </>
@@ -472,7 +475,7 @@ export function Sidebar({
                     className="remove-btn"
                     onClick={(e) => {
                       e.stopPropagation()
-                      onRemoveWorkspace(workspace.id)
+                      setRemoveConfirmId(workspace.id)
                     }}
                   >
                     ×
@@ -496,6 +499,34 @@ export function Sidebar({
           </button>
         </div>
       </div>
+
+      {removeConfirmId && (
+        <div className="confirm-overlay" onClick={() => setRemoveConfirmId(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-title">Remove Workspace?</div>
+            <div className="confirm-message">
+              Are you sure you want to remove this workspace? This will close all terminals in this workspace.
+            </div>
+            <div className="confirm-buttons">
+              <button
+                className="confirm-btn cancel"
+                onClick={() => setRemoveConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-btn danger"
+                onClick={() => {
+                  onRemoveWorkspace(removeConfirmId)
+                  setRemoveConfirmId(null)
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
