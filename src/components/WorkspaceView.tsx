@@ -45,7 +45,8 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
           id: terminal.id,
           cwd: workspace.folderPath,
           type: 'terminal',
-          shell
+          shell,
+          workspacePath: workspace.folderPath
         })
         // Focus the new terminal
         workspaceStore.setFocusedTerminal(terminal.id)
@@ -66,11 +67,12 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
         id: terminal.id,
         cwd: terminal.cwd,
         type: terminal.type,
-        shell
+        shell,
+        workspacePath: workspace.folderPath
       })
       workspaceStore.markTerminalRestored(terminal.id)
     })
-  }, [terminalsNeedingRestore])
+  }, [terminalsNeedingRestore, workspace.folderPath])
 
   // Set default focus to first regular terminal (only for active workspace)
   const firstRegularTerminalId = regularTerminals[0]?.id
@@ -87,7 +89,8 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
       id: terminal.id,
       cwd: workspace.folderPath,
       type: 'terminal',
-      shell
+      shell,
+      workspacePath: workspace.folderPath
     })
     // Focus the new terminal
     workspaceStore.setFocusedTerminal(terminal.id)
@@ -103,10 +106,10 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
     if (terminal) {
       const cwd = await window.electronAPI.pty.getCwd(id) || terminal.cwd
       const shell = await getShellFromSettings()
-      await window.electronAPI.pty.restart(id, cwd, shell)
+      await window.electronAPI.pty.restart(id, cwd, shell, workspace.folderPath)
       workspaceStore.updateTerminalCwd(id, cwd)
     }
-  }, [terminals])
+  }, [terminals, workspace.folderPath])
 
   const handleFocus = useCallback((id: string) => {
     workspaceStore.setFocusedTerminal(id)

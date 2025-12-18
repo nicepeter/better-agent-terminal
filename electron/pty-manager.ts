@@ -61,7 +61,7 @@ export class PtyManager {
   }
 
   create(options: CreatePtyOptions): boolean {
-    const { id, cwd, type, shell: shellOverride } = options
+    const { id, cwd, type, shell: shellOverride, workspacePath } = options
 
     const shell = shellOverride || this.getDefaultShell()
     let args: string[] = []
@@ -72,6 +72,19 @@ export class PtyManager {
     } else if (shell.endsWith('/zsh') || shell.endsWith('/bash') || shell.endsWith('/sh')) {
       // Use login shell to ensure ~/.zshrc or ~/.bashrc is loaded
       args = ['-l']
+    }
+
+    // Build history environment variables for per-workspace history
+    let historyEnv: Record<string, string> = {}
+    if (workspacePath) {
+      const path = require('path')
+      const historyFile = path.join(workspacePath, '.terminal_history')
+      historyEnv = {
+        HISTFILE: historyFile,
+        HISTSIZE: '10000',
+        SAVEHIST: '10000',      // zsh
+        HISTFILESIZE: '10000',  // bash
+      }
     }
 
     // Try node-pty first, fallback to child_process if it fails
@@ -85,7 +98,8 @@ export class PtyManager {
           LANG: 'en_US.UTF-8',
           LC_ALL: 'en_US.UTF-8',
           PYTHONIOENCODING: 'utf-8',
-          PYTHONUTF8: '1'
+          PYTHONUTF8: '1',
+          ...historyEnv
         }
 
         const ptyProcess = pty.spawn(shell, args, {
@@ -137,7 +151,8 @@ export class PtyManager {
           LANG: 'en_US.UTF-8',
           LC_ALL: 'en_US.UTF-8',
           PYTHONIOENCODING: 'utf-8',
-          PYTHONUTF8: '1'
+          PYTHONUTF8: '1',
+          ...historyEnv
         }
 
         const childProcess = spawn(shell, shellArgs, {
@@ -223,12 +238,12 @@ export class PtyManager {
     return false
   }
 
-  restart(id: string, cwd: string, shell?: string): boolean {
+  restart(id: string, cwd: string, shell?: string, workspacePath?: string): boolean {
     const instance = this.instances.get(id)
     if (instance) {
       const type = instance.type
       this.kill(id)
-      return this.create({ id, cwd, type, shell })
+      return this.create({ id, cwd, type, shell, workspacePath })
     }
     return false
   }

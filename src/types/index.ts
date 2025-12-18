@@ -46,6 +46,7 @@ export interface CreatePtyOptions {
   cwd: string;
   type: 'terminal' | 'claude-code';
   shell?: string;
+  workspacePath?: string;  // For per-workspace shell history (HISTFILE)
 }
 
 export interface PtyOutput {

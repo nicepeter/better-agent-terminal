@@ -71,8 +71,8 @@ ipcMain.handle('pty:kill', async (_event, id: string) => {
   return ptyManager?.kill(id)
 })
 
-ipcMain.handle('pty:restart', async (_event, id: string, cwd: string, shell?: string) => {
-  return ptyManager?.restart(id, cwd, shell)
+ipcMain.handle('pty:restart', async (_event, id: string, cwd: string, shell?: string, workspacePath?: string) => {
+  return ptyManager?.restart(id, cwd, shell, workspacePath)
 })
 
 ipcMain.handle('pty:get-cwd', async (_event, id: string) => {
