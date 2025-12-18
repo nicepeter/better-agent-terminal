@@ -42,6 +42,12 @@ export default function App() {
     }
   }, [])
 
+  const handleAddWorkspaceFromPath = useCallback((folderPath: string) => {
+    const name = folderPath.split(/[/\\]/).pop() || 'Workspace'
+    workspaceStore.addWorkspace(name, folderPath)
+    workspaceStore.save()
+  }, [])
+
   const activeWorkspace = state.workspaces.find(w => w.id === state.activeWorkspaceId)
 
   return (
@@ -51,6 +57,7 @@ export default function App() {
         activeWorkspaceId={state.activeWorkspaceId}
         onSelectWorkspace={(id) => workspaceStore.setActiveWorkspace(id)}
         onAddWorkspace={handleAddWorkspace}
+        onAddWorkspaceFromPath={handleAddWorkspaceFromPath}
         onRemoveWorkspace={(id) => {
           workspaceStore.removeWorkspace(id)
           workspaceStore.save()
@@ -81,6 +88,7 @@ export default function App() {
                 workspace={workspace}
                 terminals={workspaceStore.getWorkspaceTerminals(workspace.id)}
                 focusedTerminalId={workspace.id === state.activeWorkspaceId ? state.focusedTerminalId : null}
+                isActive={workspace.id === state.activeWorkspaceId}
               />
             </div>
           ))

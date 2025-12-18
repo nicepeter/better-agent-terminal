@@ -1,16 +1,16 @@
-import { useEffect, useCallback, useState, useRef } from 'react'
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import type { Workspace, TerminalInstance } from '../types'
 import { workspaceStore } from '../stores/workspace-store'
 import { settingsStore } from '../stores/settings-store'
 import { TerminalPanel } from './TerminalPanel'
 import { ThumbnailBar } from './ThumbnailBar'
-import { CloseConfirmDialog } from './CloseConfirmDialog'
 import { ActivityIndicator } from './ActivityIndicator'
 
 interface WorkspaceViewProps {
   workspace: Workspace
   terminals: TerminalInstance[]
   focusedTerminalId: string | null
+  isActive: boolean
 }
 
 // Helper to get shell path from settings
@@ -22,38 +22,22 @@ async function getShellFromSettings(): Promise<string | undefined> {
   return window.electronAPI.settings.getShellPath(settings.shell)
 }
 
-export function WorkspaceView({ workspace, terminals, focusedTerminalId }: WorkspaceViewProps) {
-  const [showCloseConfirm, setShowCloseConfirm] = useState<string | null>(null)
+export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActive }: WorkspaceViewProps) {
   const [editingTerminalId, setEditingTerminalId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const claudeCode = terminals.find(t => t.type === 'claude-code')
-  const regularTerminals = terminals.filter(t => t.type === 'terminal')
-
   const focusedTerminal = terminals.find(t => t.id === focusedTerminalId)
-  const isClaudeCodeFocused = focusedTerminal?.type === 'claude-code'
 
-  // Initialize Claude Code terminal when workspace loads
-  useEffect(() => {
-    if (!claudeCode) {
-      const createClaudeCode = async () => {
-        const terminal = workspaceStore.addTerminal(workspace.id, 'claude-code')
-        const shell = await getShellFromSettings()
-        window.electronAPI.pty.create({
-          id: terminal.id,
-          cwd: workspace.folderPath,
-          type: 'claude-code',
-          shell
-        })
-      }
-      createClaudeCode()
-    }
-  }, [workspace.id, claudeCode])
+  // Filter to get only regular terminals (memoized to prevent infinite loops)
+  const regularTerminals = useMemo(
+    () => terminals.filter(t => t.type === 'terminal'),
+    [terminals]
+  )
 
-  // Auto-create first terminal if none exists
+  // Auto-create first terminal if no regular terminals exist
   useEffect(() => {
-    if (regularTerminals.length === 0 && claudeCode) {
+    if (regularTerminals.length === 0) {
       const createTerminal = async () => {
         const terminal = workspaceStore.addTerminal(workspace.id, 'terminal')
         const shell = await getShellFromSettings()
@@ -63,16 +47,20 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
           type: 'terminal',
           shell
         })
+        // Focus the new terminal
+        workspaceStore.setFocusedTerminal(terminal.id)
       }
       createTerminal()
     }
-  }, [workspace.id, regularTerminals.length, claudeCode])
+  }, [workspace.id, regularTerminals.length])
 
   // Restore PTY for terminals that need it (after app restart)
+  const terminalsNeedingRestore = useMemo(
+    () => terminals.filter(t => t.needsRestore),
+    [terminals]
+  )
   useEffect(() => {
-    const terminalsToRestore = terminals.filter(t => t.needsRestore)
-
-    terminalsToRestore.forEach(async (terminal) => {
+    terminalsNeedingRestore.forEach(async (terminal) => {
       const shell = await getShellFromSettings()
       window.electronAPI.pty.create({
         id: terminal.id,
@@ -82,14 +70,15 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
       })
       workspaceStore.markTerminalRestored(terminal.id)
     })
-  }, [terminals])
+  }, [terminalsNeedingRestore])
 
-  // Set default focus
+  // Set default focus to first regular terminal (only for active workspace)
+  const firstRegularTerminalId = regularTerminals[0]?.id
   useEffect(() => {
-    if (!focusedTerminalId && claudeCode) {
-      workspaceStore.setFocusedTerminal(claudeCode.id)
+    if (isActive && !focusedTerminalId && firstRegularTerminalId) {
+      workspaceStore.setFocusedTerminal(firstRegularTerminalId)
     }
-  }, [focusedTerminalId, claudeCode])
+  }, [isActive, focusedTerminalId, firstRegularTerminalId])
 
   const handleAddTerminal = useCallback(async () => {
     const terminal = workspaceStore.addTerminal(workspace.id, 'terminal')
@@ -100,25 +89,14 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
       type: 'terminal',
       shell
     })
+    // Focus the new terminal
+    workspaceStore.setFocusedTerminal(terminal.id)
   }, [workspace.id, workspace.folderPath])
 
   const handleCloseTerminal = useCallback((id: string) => {
-    const terminal = terminals.find(t => t.id === id)
-    if (terminal?.type === 'claude-code') {
-      setShowCloseConfirm(id)
-    } else {
-      window.electronAPI.pty.kill(id)
-      workspaceStore.removeTerminal(id)
-    }
-  }, [terminals])
-
-  const handleConfirmClose = useCallback(() => {
-    if (showCloseConfirm) {
-      window.electronAPI.pty.kill(showCloseConfirm)
-      workspaceStore.removeTerminal(showCloseConfirm)
-      setShowCloseConfirm(null)
-    }
-  }, [showCloseConfirm])
+    window.electronAPI.pty.kill(id)
+    workspaceStore.removeTerminal(id)
+  }, [])
 
   const handleRestart = useCallback(async (id: string) => {
     const terminal = terminals.find(t => t.id === id)
@@ -167,17 +145,14 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
     }
   }, [handleTitleRenameSubmit])
 
-  // Determine what to show in thumbnail bar
-  const mainTerminal = focusedTerminal || claudeCode
-  const thumbnailTerminals = isClaudeCodeFocused
-    ? regularTerminals
-    : (claudeCode ? [claudeCode] : [])
+  // Main terminal is the focused one, or first regular terminal
+  const mainTerminal = focusedTerminal || regularTerminals[0]
 
   return (
     <div className="workspace-view">
-      {/* Render ALL terminals, show/hide with CSS - keeps processes running */}
+      {/* Render regular terminals only, show/hide with CSS - keeps processes running */}
       <div className="terminals-container">
-        {terminals.map(terminal => (
+        {regularTerminals.map(terminal => (
           <div
             key={terminal.id}
             className={`terminal-wrapper ${terminal.id === mainTerminal?.id ? 'active' : 'hidden'}`}
@@ -185,10 +160,9 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
             <div className="main-panel">
               <div className="main-panel-header">
                 <div
-                  className={`main-panel-title ${terminal.type === 'claude-code' ? 'claude-code' : ''}`}
+                  className="main-panel-title"
                   onDoubleClick={(e) => handleTitleDoubleClick(terminal, e)}
                 >
-                  {terminal.type === 'claude-code' && <span>✦</span>}
                   {editingTerminalId === terminal.id ? (
                     <input
                       ref={inputRef}
@@ -239,20 +213,13 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
       </div>
 
       <ThumbnailBar
-        terminals={thumbnailTerminals}
+        terminals={regularTerminals}
         focusedTerminalId={focusedTerminalId}
         onFocus={handleFocus}
-        onAddTerminal={isClaudeCodeFocused ? handleAddTerminal : undefined}
+        onAddTerminal={handleAddTerminal}
         onRenameTerminal={handleRenameTerminal}
-        showAddButton={isClaudeCodeFocused}
+        showAddButton={true}
       />
-
-      {showCloseConfirm && (
-        <CloseConfirmDialog
-          onConfirm={handleConfirmClose}
-          onCancel={() => setShowCloseConfirm(null)}
-        />
-      )}
     </div>
   )
 }

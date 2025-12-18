@@ -8,6 +8,7 @@ interface SidebarProps {
   activeWorkspaceId: string | null
   onSelectWorkspace: (id: string) => void
   onAddWorkspace: () => void
+  onAddWorkspaceFromPath: (folderPath: string) => void
   onRemoveWorkspace: (id: string) => void
   onRenameWorkspace: (id: string, alias: string) => void
   onSetWorkspaceRole: (id: string, role: string) => void
@@ -38,6 +39,7 @@ export function Sidebar({
   activeWorkspaceId,
   onSelectWorkspace,
   onAddWorkspace,
+  onAddWorkspaceFromPath,
   onRemoveWorkspace,
   onRenameWorkspace,
   onSetWorkspaceRole,
@@ -52,10 +54,12 @@ export function Sidebar({
   const [customRoleInput, setCustomRoleInput] = useState('')
   const [customBgColor, setCustomBgColor] = useState('')
   const [customTextColor, setCustomTextColor] = useState('')
+  const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const roleMenuRef = useRef<HTMLDivElement>(null)
   const colorMenuRef = useRef<HTMLDivElement>(null)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dragCounterRef = useRef(0)
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -194,10 +198,62 @@ export function Sidebar({
     }
   }
 
+  // Drag and drop handlers for adding folders
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current++
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current--
+    if (dragCounterRef.current === 0) {
+      setIsDragOver(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    dragCounterRef.current = 0
+
+    const files = e.dataTransfer.files
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      // Get the path from the file
+      const path = (file as any).path
+      if (path) {
+        onAddWorkspaceFromPath(path)
+      }
+    }
+  }
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">Workspaces</div>
-      <div className="workspace-list">
+      <div
+        className={`workspace-list ${isDragOver ? 'drag-over' : ''}`}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        {isDragOver && (
+          <div className="drop-overlay">
+            <span>Drop folder here</span>
+          </div>
+        )}
         {workspaces.map(workspace => (
           <div
             key={workspace.id}
