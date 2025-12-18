@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { workspaceStore } from '../stores/workspace-store'
+import { settingsStore } from '../stores/settings-store'
 import '@xterm/xterm/css/xterm.css'
 
 interface TerminalPanelProps {
@@ -209,7 +210,7 @@ export function TerminalPanel({ terminalId, isActive = true, backgroundColor, te
         brightCyan: '#7bbda4',
         brightWhite: '#f5f1e6'
       },
-      fontSize: 14,
+      fontSize: settingsStore.getSettings().fontSize,
       fontFamily: '"SF Mono", Menlo, Monaco, "Courier New", monospace',
       cursorBlink: true,
       scrollback: 10000,
@@ -370,6 +371,20 @@ export function TerminalPanel({ terminalId, isActive = true, backgroundColor, te
       terminal.dispose()
     }
   }, [terminalId, backgroundColor, textColor, handleDragEnter, handleDragOver, handleDragLeave, handleDrop])
+
+  // Listen for font size changes from settings
+  useEffect(() => {
+    const unsubscribe = settingsStore.subscribe(() => {
+      const terminal = terminalRef.current
+      const fitAddon = fitAddonRef.current
+      if (terminal && fitAddon) {
+        const newFontSize = settingsStore.getSettings().fontSize
+        terminal.options.fontSize = newFontSize
+        fitAddon.fit()
+      }
+    })
+    return () => unsubscribe()
+  }, [])
 
   return (
     <div
