@@ -13,6 +13,7 @@ interface SidebarProps {
   onRenameWorkspace: (id: string, alias: string) => void
   onSetWorkspaceRole: (id: string, role: string) => void
   onSetWorkspaceColors: (id: string, backgroundColor?: string, textColor?: string) => void
+  onReorderWorkspaces: (fromIndex: number, toIndex: number) => void
   onOpenSettings: () => void
   onOpenAbout: () => void
 }
@@ -44,6 +45,7 @@ export function Sidebar({
   onRenameWorkspace,
   onSetWorkspaceRole,
   onSetWorkspaceColors,
+  onReorderWorkspaces,
   onOpenSettings,
   onOpenAbout
 }: SidebarProps) {
@@ -55,6 +57,8 @@ export function Sidebar({
   const [customBgColor, setCustomBgColor] = useState('')
   const [customTextColor, setCustomTextColor] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const roleMenuRef = useRef<HTMLDivElement>(null)
   const colorMenuRef = useRef<HTMLDivElement>(null)
@@ -239,6 +243,43 @@ export function Sidebar({
     }
   }
 
+  // Workspace item drag handlers for reordering
+  const handleItemDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', index.toString())
+    // Add a slight delay to allow the drag image to be captured
+    setTimeout(() => {
+      const target = e.target as HTMLElement
+      target.style.opacity = '0.5'
+    }, 0)
+  }
+
+  const handleItemDragEnd = (e: React.DragEvent) => {
+    const target = e.target as HTMLElement
+    target.style.opacity = '1'
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleItemDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleItemDrop = (e: React.DragEvent, toIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedIndex !== null && draggedIndex !== toIndex) {
+      onReorderWorkspaces(draggedIndex, toIndex)
+    }
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">Workspaces</div>
@@ -254,11 +295,16 @@ export function Sidebar({
             <span>Drop folder here</span>
           </div>
         )}
-        {workspaces.map(workspace => (
+        {workspaces.map((workspace, index) => (
           <div
             key={workspace.id}
-            className={`workspace-item ${workspace.id === activeWorkspaceId ? 'active' : ''}`}
+            className={`workspace-item ${workspace.id === activeWorkspaceId ? 'active' : ''} ${dragOverIndex === index ? 'drag-over' : ''} ${draggedIndex === index ? 'dragging' : ''}`}
             onClick={() => handleWorkspaceClick(workspace)}
+            draggable
+            onDragStart={(e) => handleItemDragStart(e, index)}
+            onDragEnd={handleItemDragEnd}
+            onDragOver={(e) => handleItemDragOver(e, index)}
+            onDrop={(e) => handleItemDrop(e, index)}
           >
             <div className="workspace-item-content">
               <div

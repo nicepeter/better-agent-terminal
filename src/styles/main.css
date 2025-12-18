@@ -92,6 +92,25 @@ body {
   cursor: pointer;
   font-size: 13px;
   margin-bottom: 4px;
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+.workspace-item.dragging {
+  opacity: 0.5;
+}
+
+.workspace-item.drag-over {
+  background: var(--bg-tertiary);
+  border-top: 2px solid var(--accent-color);
+  margin-top: -2px;
+}
+
+.workspace-item[draggable="true"] {
+  cursor: grab;
+}
+
+.workspace-item[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .workspace-item-content {
@@ -496,6 +515,23 @@ body {
 
 .thumbnail:hover {
   border-color: var(--accent-color);
+}
+
+.thumbnail[draggable="true"] {
+  cursor: grab;
+}
+
+.thumbnail[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.thumbnail.dragging {
+  opacity: 0.5;
+}
+
+.thumbnail.drag-over {
+  border-left: 3px solid var(--accent-color);
+  margin-left: -3px;
 }
 
 .thumbnail.active {

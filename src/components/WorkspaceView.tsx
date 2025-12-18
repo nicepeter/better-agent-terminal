@@ -116,6 +116,10 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
     workspaceStore.renameTerminal(id, alias)
   }, [])
 
+  const handleReorderTerminals = useCallback((fromIndex: number, toIndex: number) => {
+    workspaceStore.reorderTerminals(workspace.id, fromIndex, toIndex)
+  }, [workspace.id])
+
   // Focus input when editing
   useEffect(() => {
     if (editingTerminalId && inputRef.current) {
@@ -218,6 +222,7 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
         onFocus={handleFocus}
         onAddTerminal={handleAddTerminal}
         onRenameTerminal={handleRenameTerminal}
+        onReorderTerminals={handleReorderTerminals}
         showAddButton={true}
       />
     </div>

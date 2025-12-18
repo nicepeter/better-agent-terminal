@@ -24,11 +24,28 @@ const setupGlobalListener = () => {
 interface TerminalThumbnailProps {
   terminal: TerminalInstance
   isActive: boolean
+  isDragging?: boolean
+  isDragOver?: boolean
   onClick: () => void
   onRename?: (id: string, alias: string) => void
+  onDragStart?: () => void
+  onDragEnd?: () => void
+  onDragOver?: () => void
+  onDrop?: () => void
 }
 
-export function TerminalThumbnail({ terminal, isActive, onClick, onRename }: TerminalThumbnailProps) {
+export function TerminalThumbnail({
+  terminal,
+  isActive,
+  isDragging,
+  isDragOver,
+  onClick,
+  onRename,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop
+}: TerminalThumbnailProps) {
   const [preview, setPreview] = useState<string>(previewCache.get(terminal.id) || '')
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
@@ -79,10 +96,33 @@ export function TerminalThumbnail({ terminal, isActive, onClick, onRename }: Ter
 
   const displayName = terminal.alias || terminal.title
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', terminal.id)
+    onDragStart?.()
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onDragOver?.()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onDrop?.()
+  }
+
   return (
     <div
-      className={`thumbnail ${isActive ? 'active' : ''} ${isClaudeCode ? 'claude-code' : ''}`}
+      className={`thumbnail ${isActive ? 'active' : ''} ${isClaudeCode ? 'claude-code' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
       onClick={onClick}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <div className="thumbnail-header">
         <div

@@ -72,6 +72,9 @@ export default function App() {
         onSetWorkspaceColors={(id, backgroundColor, textColor) => {
           workspaceStore.setWorkspaceColors(id, backgroundColor, textColor)
         }}
+        onReorderWorkspaces={(fromIndex, toIndex) => {
+          workspaceStore.reorderWorkspaces(fromIndex, toIndex)
+        }}
         onOpenSettings={() => setShowSettings(true)}
         onOpenAbout={() => setShowAbout(true)}
       />

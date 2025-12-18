@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { TerminalInstance } from '../types'
 import { TerminalThumbnail } from './TerminalThumbnail'
 
@@ -7,6 +8,7 @@ interface ThumbnailBarProps {
   onFocus: (id: string) => void
   onAddTerminal?: () => void
   onRenameTerminal?: (id: string, alias: string) => void
+  onReorderTerminals?: (fromIndex: number, toIndex: number) => void
   showAddButton: boolean
 }
 
@@ -16,9 +18,36 @@ export function ThumbnailBar({
   onFocus,
   onAddTerminal,
   onRenameTerminal,
+  onReorderTerminals,
   showAddButton
 }: ThumbnailBarProps) {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
   const label = 'Terminals'
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragOver = (index: number) => {
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleDrop = (toIndex: number) => {
+    if (draggedIndex !== null && draggedIndex !== toIndex && onReorderTerminals) {
+      onReorderTerminals(draggedIndex, toIndex)
+    }
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
 
   return (
     <div className="thumbnail-bar">
@@ -26,13 +55,19 @@ export function ThumbnailBar({
         <span>{label}</span>
       </div>
       <div className="thumbnail-list">
-        {terminals.map(terminal => (
+        {terminals.map((terminal, index) => (
           <TerminalThumbnail
             key={terminal.id}
             terminal={terminal}
             isActive={terminal.id === focusedTerminalId}
+            isDragging={draggedIndex === index}
+            isDragOver={dragOverIndex === index}
             onClick={() => onFocus(terminal.id)}
             onRename={onRenameTerminal}
+            onDragStart={() => handleDragStart(index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={() => handleDragOver(index)}
+            onDrop={() => handleDrop(index)}
           />
         ))}
         {showAddButton && onAddTerminal && (

@@ -109,6 +109,20 @@ class WorkspaceStore {
     this.save()
   }
 
+  reorderWorkspaces(fromIndex: number, toIndex: number): void {
+    const workspaces = [...this.state.workspaces]
+    const [removed] = workspaces.splice(fromIndex, 1)
+    workspaces.splice(toIndex, 0, removed)
+
+    this.state = {
+      ...this.state,
+      workspaces
+    }
+
+    this.notify()
+    this.save()
+  }
+
   // Terminal actions
   addTerminal(workspaceId: string, type: 'terminal' | 'claude-code'): TerminalInstance {
     const workspace = this.state.workspaces.find(w => w.id === workspaceId)
@@ -161,6 +175,37 @@ class WorkspaceStore {
       terminals: this.state.terminals.map(t =>
         t.id === id ? { ...t, alias: alias.trim() || undefined } : t
       )
+    }
+
+    this.notify()
+    this.save()
+  }
+
+  reorderTerminals(workspaceId: string, fromIndex: number, toIndex: number): void {
+    // Get only regular terminals for this workspace (matching what ThumbnailBar shows)
+    const regularTerminals = this.state.terminals.filter(
+      t => t.workspaceId === workspaceId && t.type === 'terminal'
+    )
+
+    if (fromIndex < 0 || fromIndex >= regularTerminals.length ||
+        toIndex < 0 || toIndex >= regularTerminals.length ||
+        fromIndex === toIndex) {
+      return
+    }
+
+    // Reorder the regular terminals
+    const reordered = [...regularTerminals]
+    const [removed] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, removed)
+
+    // Get all other terminals (different workspace or claude-code type)
+    const otherTerminals = this.state.terminals.filter(
+      t => t.workspaceId !== workspaceId || t.type !== 'terminal'
+    )
+
+    this.state = {
+      ...this.state,
+      terminals: [...otherTerminals, ...reordered]
     }
 
     this.notify()
