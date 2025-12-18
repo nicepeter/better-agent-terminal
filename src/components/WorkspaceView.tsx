@@ -68,6 +68,22 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
     }
   }, [workspace.id, regularTerminals.length, claudeCode])
 
+  // Restore PTY for terminals that need it (after app restart)
+  useEffect(() => {
+    const terminalsToRestore = terminals.filter(t => t.needsRestore)
+
+    terminalsToRestore.forEach(async (terminal) => {
+      const shell = await getShellFromSettings()
+      window.electronAPI.pty.create({
+        id: terminal.id,
+        cwd: terminal.cwd,
+        type: terminal.type,
+        shell
+      })
+      workspaceStore.markTerminalRestored(terminal.id)
+    })
+  }, [terminals])
+
   // Set default focus
   useEffect(() => {
     if (!focusedTerminalId && claudeCode) {

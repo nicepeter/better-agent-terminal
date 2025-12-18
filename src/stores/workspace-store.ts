@@ -256,9 +256,21 @@ class WorkspaceStore {
 
   // Persistence
   async save(): Promise<void> {
+    // Save terminals without scrollbackBuffer (too large)
+    const terminalsToSave = this.state.terminals.map(t => ({
+      id: t.id,
+      workspaceId: t.workspaceId,
+      type: t.type,
+      title: t.title,
+      alias: t.alias,
+      cwd: t.cwd
+    }))
+
     const data = JSON.stringify({
       workspaces: this.state.workspaces,
-      activeWorkspaceId: this.state.activeWorkspaceId
+      activeWorkspaceId: this.state.activeWorkspaceId,
+      terminals: terminalsToSave,
+      focusedTerminalId: this.state.focusedTerminalId
     })
     await window.electronAPI.workspace.save(data)
   }
@@ -268,16 +280,48 @@ class WorkspaceStore {
     if (data) {
       try {
         const parsed = JSON.parse(data)
+        // Restore terminals with empty scrollbackBuffer
+        const terminals: TerminalInstance[] = (parsed.terminals || []).map((t: Partial<TerminalInstance>) => ({
+          id: t.id,
+          workspaceId: t.workspaceId,
+          type: t.type,
+          title: t.title,
+          alias: t.alias,
+          cwd: t.cwd,
+          scrollbackBuffer: [],
+          lastActivityTime: undefined,
+          needsRestore: true  // Mark for PTY restoration
+        }))
+
         this.state = {
           ...this.state,
           workspaces: parsed.workspaces || [],
-          activeWorkspaceId: parsed.activeWorkspaceId || null
+          activeWorkspaceId: parsed.activeWorkspaceId || null,
+          terminals,
+          focusedTerminalId: parsed.focusedTerminalId || null
         }
         this.notify()
       } catch (e) {
         console.error('Failed to parse workspace data:', e)
       }
     }
+  }
+
+  // Mark terminal as restored (PTY created)
+  markTerminalRestored(id: string): void {
+    this.state = {
+      ...this.state,
+      terminals: this.state.terminals.map(t =>
+        t.id === id ? { ...t, needsRestore: false } : t
+      )
+    }
+  }
+
+  // Get terminals that need PTY restoration
+  getTerminalsNeedingRestore(workspaceId: string): TerminalInstance[] {
+    return this.state.terminals.filter(
+      t => t.workspaceId === workspaceId && (t as TerminalInstance & { needsRestore?: boolean }).needsRestore
+    )
   }
 }
 
