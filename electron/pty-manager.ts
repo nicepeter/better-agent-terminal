@@ -69,6 +69,9 @@ export class PtyManager {
     // For PowerShell (pwsh or powershell), bypass execution policy to allow unsigned scripts
     if (shell.includes('powershell') || shell.includes('pwsh')) {
       args = ['-ExecutionPolicy', 'Bypass', '-NoLogo']
+    } else if (shell.endsWith('/zsh') || shell.endsWith('/bash') || shell.endsWith('/sh')) {
+      // Use login shell to ensure ~/.zshrc or ~/.bashrc is loaded
+      args = ['-l']
     }
 
     // Try node-pty first, fallback to child_process if it fails

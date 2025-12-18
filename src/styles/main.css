@@ -508,6 +508,7 @@ body {
 .terminal-panel {
   height: 100%;
   width: 100%;
+  position: relative;
 }
 
 .terminal-panel .xterm {
@@ -909,4 +910,196 @@ body {
     transform: scale(1);
     box-shadow: 0 0 5px rgba(16, 185, 129, 0.4);
   }
+}
+
+/* Workspace Color Badge */
+.workspace-color-badge {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 2px solid;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.workspace-color-badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+}
+
+/* Color Selector Menu */
+.color-selector-menu {
+  position: absolute;
+  top: 100%;
+  left: 8px;
+  right: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  margin-top: 4px;
+  padding: 8px;
+  max-width: 220px;
+}
+
+.color-menu-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 4px 8px;
+}
+
+.color-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.color-preset-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.color-preset-item:hover {
+  background: var(--bg-hover);
+}
+
+.color-preset-item.selected {
+  background: var(--accent-color);
+}
+
+.color-preview {
+  width: 32px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+}
+
+.color-label {
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.color-preset-item.selected .color-label {
+  color: white;
+}
+
+.color-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 8px 0;
+}
+
+.color-menu-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-input-row label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.color-input-row input[type="color"] {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.color-input-row input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.color-input-row input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.color-input-row input[type="text"] {
+  flex: 1;
+  padding: 4px 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.color-input-row input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.color-apply-btn {
+  padding: 6px 12px;
+  background: var(--accent-color);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.color-apply-btn:hover {
+  background: var(--accent-hover);
+}
+
+/* Drop overlay for file drag and drop */
+.terminal-panel.dragging {
+  outline: 2px dashed var(--accent-color);
+  outline-offset: -2px;
+}
+
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 120, 212, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.drop-message {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }

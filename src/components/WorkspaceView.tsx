@@ -161,6 +161,8 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId }: Works
                 <TerminalPanel
                   terminalId={terminal.id}
                   isActive={terminal.id === mainTerminal?.id}
+                  backgroundColor={workspace.backgroundColor}
+                  textColor={workspace.textColor}
                 />
               </div>
             </div>

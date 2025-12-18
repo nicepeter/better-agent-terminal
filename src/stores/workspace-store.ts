@@ -97,6 +97,18 @@ class WorkspaceStore {
     this.save()
   }
 
+  setWorkspaceColors(id: string, backgroundColor?: string, textColor?: string): void {
+    this.state = {
+      ...this.state,
+      workspaces: this.state.workspaces.map(w =>
+        w.id === id ? { ...w, backgroundColor, textColor } : w
+      )
+    }
+
+    this.notify()
+    this.save()
+  }
+
   // Terminal actions
   addTerminal(workspaceId: string, type: 'terminal' | 'claude-code'): TerminalInstance {
     const workspace = this.state.workspaces.find(w => w.id === workspaceId)

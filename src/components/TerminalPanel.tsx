@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -9,6 +9,8 @@ import '@xterm/xterm/css/xterm.css'
 interface TerminalPanelProps {
   terminalId: string
   isActive?: boolean
+  backgroundColor?: string
+  textColor?: string
 }
 
 interface ContextMenu {
@@ -17,11 +19,12 @@ interface ContextMenu {
   hasSelection: boolean
 }
 
-export function TerminalPanel({ terminalId, isActive = true }: TerminalPanelProps) {
+export function TerminalPanel({ terminalId, isActive = true, backgroundColor, textColor }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   // Handle paste with text size checking
   const handlePasteText = (text: string) => {
@@ -76,6 +79,61 @@ export function TerminalPanel({ terminalId, isActive = true }: TerminalPanelProp
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
+  // Track drag counter to properly handle dragenter/dragleave on child elements
+  const dragCounterRef = useRef(0)
+
+  // Handle drag and drop files - use refs for callbacks to avoid stale closures
+  const handleDragEnter = useCallback((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current++
+    if (dragCounterRef.current === 1) {
+      setIsDragging(true)
+    }
+  }, [])
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy'
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current--
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current = 0
+    setIsDragging(false)
+
+    const files = e.dataTransfer?.files
+    if (files && files.length > 0) {
+      // Get file paths and escape spaces for shell
+      const paths = Array.from(files).map(file => {
+        // Use the path property from Electron's File object
+        const filePath = (file as File & { path?: string }).path || file.name
+        // Escape spaces and special characters for shell
+        if (filePath.includes(' ') || filePath.includes('(') || filePath.includes(')')) {
+          return `"${filePath}"`
+        }
+        return filePath
+      })
+
+      // Write paths to terminal (joined by space for multiple files)
+      const pathString = paths.join(' ')
+      window.electronAPI.pty.write(terminalId, pathString)
+    }
+  }, [terminalId])
+
   // Handle terminal resize and focus when becoming active
   useEffect(() => {
     if (isActive && fitAddonRef.current && terminalRef.current) {
@@ -124,13 +182,15 @@ export function TerminalPanel({ terminalId, isActive = true }: TerminalPanelProp
     if (!containerRef.current) return
 
     // Create terminal instance
-    // Novel theme (macOS Terminal.app inspired)
+    // Novel theme (macOS Terminal.app inspired), with custom colors override
+    const bgColor = backgroundColor || '#1f1d1a'
+    const fgColor = textColor || '#dfdbc3'
     const terminal = new Terminal({
       theme: {
-        background: '#1f1d1a',
-        foreground: '#dfdbc3',
-        cursor: '#dfdbc3',
-        cursorAccent: '#1f1d1a',
+        background: bgColor,
+        foreground: fgColor,
+        cursor: fgColor,
+        cursorAccent: bgColor,
         selectionBackground: '#5c5142',
         black: '#3b3228',
         red: '#cb6077',
@@ -290,17 +350,37 @@ export function TerminalPanel({ terminalId, isActive = true }: TerminalPanelProp
       window.electronAPI.pty.resize(terminalId, cols, rows)
     }, 100)
 
+    // Add native DOM event listeners for drag and drop with capture phase
+    // This ensures we capture events before xterm.js internal elements can handle them
+    const container = containerRef.current
+    container.addEventListener('dragenter', handleDragEnter, true)
+    container.addEventListener('dragover', handleDragOver, true)
+    container.addEventListener('dragleave', handleDragLeave, true)
+    container.addEventListener('drop', handleDrop, true)
+
     return () => {
       unsubscribeOutput()
       unsubscribeExit()
       resizeObserver.disconnect()
       observer.disconnect()
+      container.removeEventListener('dragenter', handleDragEnter, true)
+      container.removeEventListener('dragover', handleDragOver, true)
+      container.removeEventListener('dragleave', handleDragLeave, true)
+      container.removeEventListener('drop', handleDrop, true)
       terminal.dispose()
     }
-  }, [terminalId])
+  }, [terminalId, backgroundColor, textColor, handleDragEnter, handleDragOver, handleDragLeave, handleDrop])
 
   return (
-    <div ref={containerRef} className="terminal-panel">
+    <div
+      ref={containerRef}
+      className={`terminal-panel ${isDragging ? 'dragging' : ''}`}
+    >
+      {isDragging && (
+        <div className="drop-overlay">
+          <div className="drop-message">Drop files here to paste path</div>
+        </div>
+      )}
       {contextMenu && (
         <div
           className="context-menu"

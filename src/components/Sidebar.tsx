@@ -11,9 +11,21 @@ interface SidebarProps {
   onRemoveWorkspace: (id: string) => void
   onRenameWorkspace: (id: string, alias: string) => void
   onSetWorkspaceRole: (id: string, role: string) => void
+  onSetWorkspaceColors: (id: string, backgroundColor?: string, textColor?: string) => void
   onOpenSettings: () => void
   onOpenAbout: () => void
 }
+
+const PRESET_COLORS = [
+  { id: 'default', label: 'Default', bg: undefined, text: undefined },
+  { id: 'dark', label: 'Dark', bg: '#1a1a2e', text: '#eaeaea' },
+  { id: 'midnight', label: 'Midnight', bg: '#0f0f23', text: '#cccccc' },
+  { id: 'forest', label: 'Forest', bg: '#1a2f1a', text: '#b8d4b8' },
+  { id: 'ocean', label: 'Ocean', bg: '#0d253f', text: '#a8d4f0' },
+  { id: 'sunset', label: 'Sunset', bg: '#2d1b1b', text: '#f0c8a8' },
+  { id: 'purple', label: 'Purple', bg: '#1e1a2e', text: '#d4b8f0' },
+  { id: 'coffee', label: 'Coffee', bg: '#1f1814', text: '#d4c4b0' },
+] as const
 
 function getRoleColor(role?: string): string {
   if (!role) return 'transparent'
@@ -29,15 +41,20 @@ export function Sidebar({
   onRemoveWorkspace,
   onRenameWorkspace,
   onSetWorkspaceRole,
+  onSetWorkspaceColors,
   onOpenSettings,
   onOpenAbout
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [roleMenuId, setRoleMenuId] = useState<string | null>(null)
+  const [colorMenuId, setColorMenuId] = useState<string | null>(null)
   const [customRoleInput, setCustomRoleInput] = useState('')
+  const [customBgColor, setCustomBgColor] = useState('')
+  const [customTextColor, setCustomTextColor] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const roleMenuRef = useRef<HTMLDivElement>(null)
+  const colorMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -60,6 +77,21 @@ export function Sidebar({
     }
   }, [roleMenuId])
 
+  // Close color menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (colorMenuRef.current && !colorMenuRef.current.contains(e.target as Node)) {
+        setColorMenuId(null)
+        setCustomBgColor('')
+        setCustomTextColor('')
+      }
+    }
+    if (colorMenuId) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [colorMenuId])
+
   const handleRoleClick = (workspaceId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setRoleMenuId(roleMenuId === workspaceId ? null : workspaceId)
@@ -81,6 +113,32 @@ export function Sidebar({
     }
     setRoleMenuId(null)
     setCustomRoleInput('')
+  }
+
+  const handleColorClick = (workspaceId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setColorMenuId(colorMenuId === workspaceId ? null : workspaceId)
+    const workspace = workspaces.find(w => w.id === workspaceId)
+    setCustomBgColor(workspace?.backgroundColor || '')
+    setCustomTextColor(workspace?.textColor || '')
+  }
+
+  const handleSelectColor = (workspaceId: string, bg?: string, text?: string) => {
+    onSetWorkspaceColors(workspaceId, bg, text)
+    setColorMenuId(null)
+    setCustomBgColor('')
+    setCustomTextColor('')
+  }
+
+  const handleCustomColorSubmit = (workspaceId: string) => {
+    onSetWorkspaceColors(
+      workspaceId,
+      customBgColor.trim() || undefined,
+      customTextColor.trim() || undefined
+    )
+    setColorMenuId(null)
+    setCustomBgColor('')
+    setCustomTextColor('')
   }
 
   const handleDoubleClick = (workspace: Workspace, e: React.MouseEvent) => {
@@ -143,6 +201,15 @@ export function Sidebar({
                       >
                         {workspace.role || '＋'}
                       </span>
+                      <span
+                        className="workspace-color-badge"
+                        style={{
+                          backgroundColor: workspace.backgroundColor || '#1e1e1e',
+                          borderColor: workspace.textColor || '#cccccc'
+                        }}
+                        onClick={(e) => handleColorClick(workspace.id, e)}
+                        title="Set terminal colors"
+                      />
                     </div>
                     <span className="workspace-folder">{workspace.name}</span>
                   </>
@@ -187,6 +254,71 @@ export function Sidebar({
                       </div>
                     </>
                   )}
+                </div>
+              )}
+              {colorMenuId === workspace.id && (
+                <div className="color-selector-menu" ref={colorMenuRef} onClick={(e) => e.stopPropagation()}>
+                  <div className="color-menu-title">Terminal Colors</div>
+                  <div className="color-presets">
+                    {PRESET_COLORS.map(color => (
+                      <div
+                        key={color.id}
+                        className={`color-preset-item ${
+                          workspace.backgroundColor === color.bg && workspace.textColor === color.text ? 'selected' : ''
+                        }`}
+                        onClick={() => handleSelectColor(workspace.id, color.bg, color.text)}
+                        title={color.label}
+                      >
+                        <span
+                          className="color-preview"
+                          style={{
+                            backgroundColor: color.bg || '#1e1e1e',
+                            color: color.text || '#cccccc'
+                          }}
+                        >
+                          Aa
+                        </span>
+                        <span className="color-label">{color.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="color-menu-divider" />
+                  <div className="color-menu-custom">
+                    <div className="color-input-row">
+                      <label>Background</label>
+                      <input
+                        type="color"
+                        value={customBgColor || '#1e1e1e'}
+                        onChange={(e) => setCustomBgColor(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        placeholder="#1e1e1e"
+                        value={customBgColor}
+                        onChange={(e) => setCustomBgColor(e.target.value)}
+                      />
+                    </div>
+                    <div className="color-input-row">
+                      <label>Text</label>
+                      <input
+                        type="color"
+                        value={customTextColor || '#cccccc'}
+                        onChange={(e) => setCustomTextColor(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        placeholder="#cccccc"
+                        value={customTextColor}
+                        onChange={(e) => setCustomTextColor(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="color-apply-btn"
+                      onClick={() => handleCustomColorSubmit(workspace.id)}
+                    >
+                      Apply
+                    </button>
+                  </div>
                 </div>
               )}
               <div className="workspace-item-actions">

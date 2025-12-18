@@ -62,6 +62,9 @@ export default function App() {
         onSetWorkspaceRole={(id, role) => {
           workspaceStore.setWorkspaceRole(id, role)
         }}
+        onSetWorkspaceColors={(id, backgroundColor, textColor) => {
+          workspaceStore.setWorkspaceColors(id, backgroundColor, textColor)
+        }}
         onOpenSettings={() => setShowSettings(true)}
         onOpenAbout={() => setShowAbout(true)}
       />

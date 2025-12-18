@@ -5,6 +5,8 @@ export interface Workspace {
   role?: string;
   folderPath: string;
   createdAt: number;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 // Preset roles for quick selection
