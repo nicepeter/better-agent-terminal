@@ -14,6 +14,9 @@ class WorkspaceStore {
 
   private listeners: Set<Listener> = new Set()
 
+  // Remember focused terminal for each workspace (not persisted across restart)
+  private workspaceFocusedTerminals: Map<string, string> = new Map()
+
   getState(): AppState {
     return this.state
   }
@@ -65,10 +68,18 @@ class WorkspaceStore {
   setActiveWorkspace(id: string): void {
     if (this.state.activeWorkspaceId === id) return
 
+    // Save current workspace's focused terminal
+    if (this.state.activeWorkspaceId && this.state.focusedTerminalId) {
+      this.workspaceFocusedTerminals.set(this.state.activeWorkspaceId, this.state.focusedTerminalId)
+    }
+
+    // Restore target workspace's focused terminal (or null if not remembered)
+    const restoredFocusedTerminalId = this.workspaceFocusedTerminals.get(id) || null
+
     this.state = {
       ...this.state,
       activeWorkspaceId: id,
-      focusedTerminalId: null
+      focusedTerminalId: restoredFocusedTerminalId
     }
 
     this.notify()
@@ -218,6 +229,11 @@ class WorkspaceStore {
     this.state = {
       ...this.state,
       focusedTerminalId: id
+    }
+
+    // Update workspace focused terminal map
+    if (this.state.activeWorkspaceId && id) {
+      this.workspaceFocusedTerminals.set(this.state.activeWorkspaceId, id)
     }
 
     this.notify()
