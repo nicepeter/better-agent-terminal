@@ -89,6 +89,12 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
+## Known Issues
+
+- **Code Agent exits after system standby** - Claude Code agent automatically exits when computer wakes from sleep/standby mode. This doesn't happen in iTerm2, so it may be related to node-pty or Electron's handling of system sleep events.
+
+---
+
 ## Credits
 
 - Original author: **TonyQ** - [@tony1223](https://github.com/tony1223)
