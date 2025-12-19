@@ -63,6 +63,12 @@ export class PtyManager {
   create(options: CreatePtyOptions): boolean {
     const { id, cwd, type, shell: shellOverride, workspacePath } = options
 
+    // Prevent duplicate creation - if instance already exists, skip
+    if (this.instances.has(id)) {
+      console.log(`PTY ${id} already exists, skipping create`)
+      return true
+    }
+
     const shell = shellOverride || this.getDefaultShell()
     let args: string[] = []
 
