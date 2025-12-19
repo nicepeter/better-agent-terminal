@@ -163,6 +163,7 @@ class WorkspaceStore {
     }
 
     this.notify()
+    this.save()
     return terminal
   }
 
@@ -178,6 +179,7 @@ class WorkspaceStore {
     }
 
     this.notify()
+    this.save()
   }
 
   renameTerminal(id: string, alias: string): void {

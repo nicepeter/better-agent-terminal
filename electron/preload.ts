@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { CreatePtyOptions } from '../src/types'
 
+// Increase max listeners to support many terminals (default is 10)
+ipcRenderer.setMaxListeners(50)
+
 const electronAPI = {
   pty: {
     create: (options: CreatePtyOptions) => ipcRenderer.invoke('pty:create', options),
