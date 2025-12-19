@@ -33,6 +33,7 @@ Forked from [TonyQ's better-agent-terminal](https://github.com/tony1223/better-a
 - **Terminal Rename** - Double-click to rename terminal tabs
 - **Workspace Delete Confirmation** - Confirm dialog before deleting workspace
 - **Remember Active Terminal** - Switching workspace remembers last focused terminal
+- **Auto-focus Terminal** - Terminal automatically gets keyboard focus when switching workspaces
 
 ### Terminal Improvements
 - **Per-Workspace Shell History** - Each workspace maintains its own `.terminal_history`
@@ -86,12 +87,6 @@ npm run build
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## TODO
-
-- **Auto-focus terminal on workspace switch** - Terminal should automatically get keyboard focus when switching workspaces, without requiring a mouse click
 
 ---
 

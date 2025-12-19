@@ -10,6 +10,7 @@ import '@xterm/xterm/css/xterm.css'
 interface TerminalPanelProps {
   terminalId: string
   isActive?: boolean
+  workspaceIsActive?: boolean  // When workspace becomes active, auto-focus terminal
   backgroundColor?: string
   textColor?: string
 }
@@ -20,7 +21,7 @@ interface ContextMenu {
   hasSelection: boolean
 }
 
-export function TerminalPanel({ terminalId, isActive = true, backgroundColor, textColor }: TerminalPanelProps) {
+export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive = true, backgroundColor, textColor }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -137,7 +138,7 @@ export function TerminalPanel({ terminalId, isActive = true, backgroundColor, te
 
   // Handle terminal resize and focus when becoming active
   useEffect(() => {
-    if (isActive && fitAddonRef.current && terminalRef.current) {
+    if (isActive && workspaceIsActive && fitAddonRef.current && terminalRef.current) {
       // Small delay to ensure DOM is updated
       const timeoutId = setTimeout(() => {
         if (fitAddonRef.current && terminalRef.current) {
@@ -150,7 +151,7 @@ export function TerminalPanel({ terminalId, isActive = true, backgroundColor, te
 
       return () => clearTimeout(timeoutId)
     }
-  }, [isActive, terminalId])
+  }, [isActive, workspaceIsActive, terminalId])
 
   // Add intersection observer to detect when terminal becomes visible
   useEffect(() => {

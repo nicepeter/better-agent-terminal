@@ -210,6 +210,7 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
                 <TerminalPanel
                   terminalId={terminal.id}
                   isActive={terminal.id === mainTerminal?.id}
+                  workspaceIsActive={isActive}
                   backgroundColor={workspace.backgroundColor}
                   textColor={workspace.textColor}
                 />
