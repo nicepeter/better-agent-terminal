@@ -117,6 +117,7 @@ export class PtyManager {
         })
 
         ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
+          console.log(`PTY ${id} exited with code: ${exitCode}`)
           if (!this.window.isDestroyed()) {
             this.window.webContents.send('pty:exit', id, exitCode)
           }
@@ -175,6 +176,7 @@ export class PtyManager {
         })
 
         childProcess.on('exit', (exitCode: number | null) => {
+          console.log(`PTY ${id} exited with code: ${exitCode ?? 0}`)
           if (!this.window.isDestroyed()) {
             this.window.webContents.send('pty:exit', id, exitCode ?? 0)
           }
