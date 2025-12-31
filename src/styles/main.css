@@ -1290,3 +1290,48 @@ body {
   border: 1px solid var(--accent-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
+
+/* Terminal Search Bar */
+.terminal-search-bar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  background: var(--bg-secondary);
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.terminal-search-bar input {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 3px;
+  width: 180px;
+  font-size: 13px;
+  outline: none;
+}
+
+.terminal-search-bar input:focus {
+  border-color: var(--accent-color);
+}
+
+.terminal-search-bar button {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.terminal-search-bar button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}

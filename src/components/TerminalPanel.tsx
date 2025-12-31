@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { SearchAddon } from '@xterm/addon-search'
 import { workspaceStore } from '../stores/workspace-store'
 import { settingsStore } from '../stores/settings-store'
 import '@xterm/xterm/css/xterm.css'
@@ -25,8 +26,12 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const searchAddonRef = useRef<SearchAddon | null>(null)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchText, setSearchText] = useState('')
 
   // Handle paste with text size checking
   const handlePasteText = (text: string) => {
@@ -223,12 +228,16 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
 
     const fitAddon = new FitAddon()
     const unicode11Addon = new Unicode11Addon()
+    const searchAddon = new SearchAddon()
     terminal.loadAddon(fitAddon)
+    terminal.loadAddon(searchAddon)
     terminal.open(containerRef.current)
 
     // Load unicode11 addon after terminal is open
     terminal.loadAddon(unicode11Addon)
     terminal.unicode.activeVersion = '11'
+
+    searchAddonRef.current = searchAddon
 
     // Delay fit to ensure terminal is fully initialized
     requestAnimationFrame(() => {
@@ -271,6 +280,12 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
 
     // Handle copy and paste shortcuts
     terminal.attachCustomKeyEventHandler((event) => {
+      // Cmd+F (Mac) or Ctrl+F (Windows/Linux) for search
+      if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+        event.preventDefault()
+        setShowSearch(true)
+        return false
+      }
       // Ctrl+Shift+C for copy
       if (event.ctrlKey && event.shiftKey && event.key === 'C') {
         const selection = terminal.getSelection()
@@ -387,11 +402,58 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
     return () => unsubscribe()
   }, [])
 
+  // Focus search input when search is shown
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [showSearch])
+
+  // Search handlers
+  const handleSearch = (direction: 'next' | 'prev') => {
+    if (!searchAddonRef.current || !searchText) return
+    if (direction === 'next') {
+      searchAddonRef.current.findNext(searchText)
+    } else {
+      searchAddonRef.current.findPrevious(searchText)
+    }
+  }
+
+  const closeSearch = () => {
+    setShowSearch(false)
+    setSearchText('')
+    terminalRef.current?.focus()
+  }
+
   return (
     <div
       ref={containerRef}
       className={`terminal-panel ${isDragging ? 'dragging' : ''}`}
     >
+      {showSearch && (
+        <div className="terminal-search-bar">
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleSearch(e.shiftKey ? 'prev' : 'next')
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                closeSearch()
+              }
+            }}
+            placeholder="Search..."
+          />
+          <button onClick={() => handleSearch('prev')} title="Previous (Shift+Enter)">▲</button>
+          <button onClick={() => handleSearch('next')} title="Next (Enter)">▼</button>
+          <button onClick={closeSearch} title="Close (Esc)">✕</button>
+        </div>
+      )}
       {isDragging && (
         <div className="drop-overlay">
           <div className="drop-message">Drop files here to paste path</div>
