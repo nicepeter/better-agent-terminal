@@ -23,7 +23,10 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(xxd:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git checkout:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ]
   }
 }
