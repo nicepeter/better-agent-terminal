@@ -41,6 +41,7 @@ Forked from [TonyQ's better-agent-terminal](https://github.com/tony1223/better-a
 - **Terminal State Preservation** - All workspaces stay mounted, terminals keep running when switching
 - **Persistent Terminals** - Terminal sessions persist across app restarts
 - **Terminal Font Size Fix** - Fixed font size setting not applying
+- **Readline Navigation on Mac** - Ctrl+F/Ctrl+B work in SSH for cursor movement (Cmd+F for search)
 
 ### UI Enhancements
 - **4 New Soft Terminal Themes** - Additional color themes for terminals
