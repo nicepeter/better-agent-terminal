@@ -281,7 +281,9 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
     // Handle copy and paste shortcuts
     terminal.attachCustomKeyEventHandler((event) => {
       // Cmd+F (Mac) or Ctrl+F (Windows/Linux) for search
-      if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+      // On Mac, only use Cmd+F so Ctrl+F can be used for readline forward-char
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      if ((isMac ? event.metaKey : event.ctrlKey) && event.key === 'f') {
         event.preventDefault()
         setShowSearch(true)
         return false
