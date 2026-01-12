@@ -280,6 +280,13 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
 
     // Handle copy and paste shortcuts
     terminal.attachCustomKeyEventHandler((event) => {
+      // Shift+Enter for newline (instead of Option+Enter)
+      // Only handle keydown to prevent double trigger
+      if (event.type === 'keydown' && event.shiftKey && event.key === 'Enter') {
+        event.preventDefault()
+        window.electronAPI.pty.write(terminalId, '\n')
+        return false
+      }
       // Cmd+F (Mac) or Ctrl+F (Windows/Linux) for search
       // On Mac, only use Cmd+F so Ctrl+F can be used for readline forward-char
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
