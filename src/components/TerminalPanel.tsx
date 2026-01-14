@@ -185,6 +185,29 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
     return () => observer.disconnect()
   }, [isActive, terminalId])
 
+  // Handle system wake from standby - refit terminal when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isActive && fitAddonRef.current && terminalRef.current) {
+        setTimeout(() => {
+          if (fitAddonRef.current && terminalRef.current) {
+            const terminal = terminalRef.current
+            fitAddonRef.current.fit()
+            const { cols, rows } = terminal
+            window.electronAPI.pty.resize(terminalId, cols, rows)
+            // Force xterm.js to refresh display
+            terminal.refresh(0, rows - 1)
+            // Clear and reset terminal state to fix cursor position
+            terminal.write('\x1b[?25h') // Show cursor
+          }
+        }, 100)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isActive, terminalId])
+
   useEffect(() => {
     if (!containerRef.current) return
 
