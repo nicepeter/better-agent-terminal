@@ -341,8 +341,8 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
         })
         return false
       }
-      // Ctrl+C for copy when there's a selection
-      if (event.ctrlKey && !event.shiftKey && event.key === 'c') {
+      // Cmd+C (Mac) / Ctrl+C (others) for copy when there's a selection
+      if ((isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey && event.key === 'c') {
         const selection = terminal.getSelection()
         if (selection) {
           navigator.clipboard.writeText(selection)
