@@ -189,6 +189,7 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
                   <ActivityIndicator
                     terminalId={terminal.id}
                     size="small"
+                    onClick={() => window.dispatchEvent(new CustomEvent('focus-terminal', { detail: terminal.id }))}
                   />
                   <button
                     className="action-btn"

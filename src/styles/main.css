@@ -1099,6 +1099,15 @@ body {
   }
 }
 
+.activity-indicator.clickable {
+  cursor: pointer;
+}
+
+.activity-indicator.clickable:hover {
+  transform: scale(1.2);
+  opacity: 1;
+}
+
 /* Workspace Color Badge */
 .workspace-color-badge {
   width: 14px;

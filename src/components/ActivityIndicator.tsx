@@ -6,13 +6,15 @@ interface ActivityIndicatorProps {
   workspaceId?: string
   terminalId?: string
   size?: 'small' | 'medium'
+  onClick?: () => void
 }
 
 export function ActivityIndicator({
   lastActivityTime: propActivityTime,
   workspaceId,
   terminalId,
-  size = 'small'
+  size = 'small',
+  onClick
 }: ActivityIndicatorProps) {
   const [isActive, setIsActive] = useState(false)
 
@@ -45,7 +47,7 @@ export function ActivityIndicator({
     return () => clearInterval(interval)
   }, [propActivityTime, workspaceId, terminalId])
 
-  const className = `activity-indicator ${size} ${isActive ? 'active' : 'inactive'}`
+  const className = `activity-indicator ${size} ${isActive ? 'active' : 'inactive'} ${onClick ? 'clickable' : ''}`
 
-  return <div className={className} />
+  return <div className={className} onClick={onClick} title={onClick ? 'Click to focus terminal' : undefined} />
 }

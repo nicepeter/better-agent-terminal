@@ -188,9 +188,9 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
   // Handle system wake from standby - refit terminal when page becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isActive && fitAddonRef.current && terminalRef.current) {
+      if (document.visibilityState === 'visible' && isActive && fitAddonRef.current && terminalRef.current && containerRef.current) {
         setTimeout(() => {
-          if (fitAddonRef.current && terminalRef.current) {
+          if (fitAddonRef.current && terminalRef.current && containerRef.current) {
             const terminal = terminalRef.current
             fitAddonRef.current.fit()
             const { cols, rows } = terminal
@@ -199,6 +199,21 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
             terminal.refresh(0, rows - 1)
             // Clear and reset terminal state to fix cursor position
             terminal.write('\x1b[?25h') // Show cursor
+            // Fix IME textarea position and reset focus
+            const textarea = containerRef.current.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement
+            if (textarea) {
+              textarea.blur()
+              textarea.style.position = 'fixed'
+              textarea.style.bottom = '80px'
+              textarea.style.left = '220px'
+              textarea.style.top = 'auto'
+            }
+            // Trigger resize event to force xterm.js recalculate positions
+            window.dispatchEvent(new Event('resize'))
+            // Restore focus to terminal after IME reset
+            setTimeout(() => {
+              terminal.focus()
+            }, 50)
           }
         }, 100)
       }
@@ -207,6 +222,39 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [isActive, terminalId])
+
+  // Listen for custom focus event (triggered by clicking activity indicator)
+  useEffect(() => {
+    const handleFocusRequest = (e: CustomEvent) => {
+      if (e.detail === terminalId && terminalRef.current && fitAddonRef.current && containerRef.current) {
+        const terminal = terminalRef.current
+        // Refit to ensure proper dimensions
+        fitAddonRef.current.fit()
+        // Refresh display to update cursor position
+        terminal.refresh(0, terminal.rows - 1)
+        // Scroll to bottom to ensure cursor is visible
+        terminal.scrollToBottom()
+        // Fix IME textarea position before focus
+        const textarea = containerRef.current.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement
+        if (textarea) {
+          // Blur first to reset IME state
+          textarea.blur()
+          textarea.style.position = 'fixed'
+          textarea.style.bottom = '80px'
+          textarea.style.left = '220px'
+          textarea.style.top = 'auto'
+        }
+        // Trigger resize event to force xterm.js recalculate positions
+        window.dispatchEvent(new Event('resize'))
+        // Focus the terminal after a short delay to allow IME reset
+        setTimeout(() => {
+          terminal.focus()
+        }, 50)
+      }
+    }
+    window.addEventListener('focus-terminal', handleFocusRequest as EventListener)
+    return () => window.removeEventListener('focus-terminal', handleFocusRequest as EventListener)
+  }, [terminalId])
 
   useEffect(() => {
     if (!containerRef.current) return
