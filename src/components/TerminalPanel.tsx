@@ -361,6 +361,15 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       // Cmd+F (Mac) or Ctrl+F (Windows/Linux) for search
       // On Mac, only use Cmd+F so Ctrl+F can be used for readline forward-char
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      // Cmd+1 (Mac) to scroll to bottom and focus terminal
+      if (isMac && event.metaKey && event.key === '1') {
+        event.preventDefault()
+        fitAddonRef.current?.fit()
+        terminal.refresh(0, terminal.rows - 1)
+        terminal.scrollToBottom()
+        terminal.focus()
+        return false
+      }
       if ((isMac ? event.metaKey : event.ctrlKey) && event.key === 'f') {
         event.preventDefault()
         setShowSearch(true)
