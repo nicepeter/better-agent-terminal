@@ -37,6 +37,18 @@ const electronAPI = {
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url)
+  },
+  clipboard: {
+    onCopy: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('clipboard:copy', handler)
+      return () => ipcRenderer.removeListener('clipboard:copy', handler)
+    },
+    onPaste: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('clipboard:paste', handler)
+      return () => ipcRenderer.removeListener('clipboard:paste', handler)
+    }
   }
 }
 

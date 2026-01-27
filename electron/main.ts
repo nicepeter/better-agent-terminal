@@ -38,6 +38,23 @@ function createWindow() {
     ptyManager?.dispose()
     ptyManager = null
   })
+
+  // Intercept Cmd+C/Cmd+V and forward to renderer via IPC
+  // Also block Cmd+W to prevent closing window
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.meta && !input.shift && input.key.toLowerCase() === 'c') {
+      event.preventDefault()
+      mainWindow?.webContents.send('clipboard:copy')
+    }
+    if (input.meta && !input.shift && input.key.toLowerCase() === 'v') {
+      event.preventDefault()
+      mainWindow?.webContents.send('clipboard:paste')
+    }
+    // Block Cmd+W to prevent closing window
+    if (input.meta && !input.shift && input.key.toLowerCase() === 'w') {
+      event.preventDefault()
+    }
+  })
 }
 
 app.whenReady().then(() => {
@@ -66,9 +83,7 @@ app.whenReady().then(() => {
         { role: 'undo' },
         { role: 'redo' },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
+        // cut, copy, paste removed - handled by xterm.js custom key handler
         { role: 'selectAll' }
       ]
     },

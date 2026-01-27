@@ -34,7 +34,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
   const [searchText, setSearchText] = useState('')
 
   // Handle paste with text size checking
-  const handlePasteText = (text: string) => {
+  const handlePasteText = useCallback((text: string) => {
     if (!text) return
 
     // For very long text (> 2000 chars), split into smaller chunks
@@ -54,7 +54,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       // Normal sized text, send directly
       window.electronAPI.pty.write(terminalId, text)
     }
-  }
+  }, [terminalId])
 
   // Handle context menu actions
   const handleCopy = () => {
@@ -192,14 +192,16 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
         setTimeout(() => {
           if (fitAddonRef.current && terminalRef.current && containerRef.current) {
             const terminal = terminalRef.current
+
+            // 1. First show cursor (before any refresh)
+            terminal.write('\x1b[?25h')
+
+            // 2. Fit terminal and resize PTY
             fitAddonRef.current.fit()
             const { cols, rows } = terminal
             window.electronAPI.pty.resize(terminalId, cols, rows)
-            // Force xterm.js to refresh display
-            terminal.refresh(0, rows - 1)
-            // Clear and reset terminal state to fix cursor position
-            terminal.write('\x1b[?25h') // Show cursor
-            // Fix IME textarea position and reset focus
+
+            // 3. Fix IME textarea position
             const textarea = containerRef.current.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement
             if (textarea) {
               textarea.blur()
@@ -208,11 +210,17 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
               textarea.style.left = '220px'
               textarea.style.top = 'auto'
             }
-            // Trigger resize event to force xterm.js recalculate positions
+
+            // 4. Trigger resize event to force xterm.js recalculate positions
             window.dispatchEvent(new Event('resize'))
-            // Restore focus to terminal after IME reset
+
+            // 5. Focus terminal and refresh display
             setTimeout(() => {
               terminal.focus()
+              // Force refresh after focus to ensure cursor is rendered
+              terminal.refresh(0, terminal.rows - 1)
+              // Send cursor show command again after refresh
+              terminal.write('\x1b[?25h')
             }, 50)
           }
         }, 100)
@@ -390,8 +398,8 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
         })
         return false
       }
-      // Ctrl+V for paste (standard shortcut)
-      if (event.ctrlKey && !event.shiftKey && event.key === 'v') {
+      // Cmd+V (Mac) / Ctrl+V (others) for paste
+      if (event.type === 'keydown' && (isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey && event.key === 'v') {
         event.preventDefault()
         navigator.clipboard.readText().then((text) => {
           handlePasteText(text)
@@ -399,7 +407,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
         return false
       }
       // Cmd+C (Mac) / Ctrl+C (others) for copy when there's a selection
-      if ((isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey && event.key === 'c') {
+      if (event.type === 'keydown' && (isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey && event.key === 'c') {
         const selection = terminal.getSelection()
         if (selection) {
           navigator.clipboard.writeText(selection)
@@ -490,6 +498,34 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
     })
     return () => unsubscribe()
   }, [])
+
+  // Listen for clipboard IPC events from main process
+  useEffect(() => {
+    if (!isActive || !workspaceIsActive) return
+
+    const unsubscribeCopy = window.electronAPI.clipboard.onCopy(() => {
+      const terminal = terminalRef.current
+      if (terminal) {
+        const selection = terminal.getSelection()
+        if (selection) {
+          navigator.clipboard.writeText(selection)
+        }
+      }
+    })
+
+    const unsubscribePaste = window.electronAPI.clipboard.onPaste(() => {
+      navigator.clipboard.readText().then((text) => {
+        if (text) {
+          handlePasteText(text)
+        }
+      })
+    })
+
+    return () => {
+      unsubscribeCopy()
+      unsubscribePaste()
+    }
+  }, [isActive, workspaceIsActive, handlePasteText])
 
   // Focus search input when search is shown
   useEffect(() => {
