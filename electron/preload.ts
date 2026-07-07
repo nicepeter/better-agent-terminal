@@ -39,6 +39,8 @@ const electronAPI = {
     openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url)
   },
   clipboard: {
+    readText: (): Promise<string> => ipcRenderer.invoke('clipboard:read'),
+    writeText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:write', text),
     onCopy: (callback: () => void) => {
       const handler = () => callback()
       ipcRenderer.on('clipboard:copy', handler)

@@ -61,7 +61,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
     if (terminalRef.current) {
       const selection = terminalRef.current.getSelection()
       if (selection) {
-        navigator.clipboard.writeText(selection)
+        window.electronAPI.clipboard.writeText(selection)
       }
     }
     setContextMenu(null)
@@ -69,7 +69,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
 
   const handlePaste = async () => {
     try {
-      const text = await navigator.clipboard.readText()
+      const text = await window.electronAPI.clipboard.readText()
       if (text) {
         handlePasteText(text)
       }
@@ -387,13 +387,13 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       if (event.ctrlKey && event.shiftKey && event.key === 'C') {
         const selection = terminal.getSelection()
         if (selection) {
-          navigator.clipboard.writeText(selection)
+          window.electronAPI.clipboard.writeText(selection)
         }
         return false
       }
       // Ctrl+Shift+V for paste
       if (event.ctrlKey && event.shiftKey && event.key === 'V') {
-        navigator.clipboard.readText().then((text) => {
+        window.electronAPI.clipboard.readText().then((text) => {
           handlePasteText(text)
         })
         return false
@@ -401,7 +401,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       // Cmd+V (Mac) / Ctrl+V (others) for paste
       if (event.type === 'keydown' && (isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey && event.key === 'v') {
         event.preventDefault()
-        navigator.clipboard.readText().then((text) => {
+        window.electronAPI.clipboard.readText().then((text) => {
           handlePasteText(text)
         })
         return false
@@ -410,7 +410,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       if (event.type === 'keydown' && (isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey && event.key === 'c') {
         const selection = terminal.getSelection()
         if (selection) {
-          navigator.clipboard.writeText(selection)
+          window.electronAPI.clipboard.writeText(selection)
           return false
         }
         // If no selection, let Ctrl+C pass through for interrupt signal
@@ -508,13 +508,13 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       if (terminal) {
         const selection = terminal.getSelection()
         if (selection) {
-          navigator.clipboard.writeText(selection)
+          window.electronAPI.clipboard.writeText(selection)
         }
       }
     })
 
     const unsubscribePaste = window.electronAPI.clipboard.onPaste(() => {
-      navigator.clipboard.readText().then((text) => {
+      window.electronAPI.clipboard.readText().then((text) => {
         if (text) {
           handlePasteText(text)
         }

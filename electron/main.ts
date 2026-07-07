@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, Menu, clipboard } from 'electron'
 import path from 'path'
 import { PtyManager } from './pty-manager'
 
@@ -244,4 +244,13 @@ ipcMain.handle('settings:get-shell-path', async (_event, shellType: string) => {
 
 ipcMain.handle('shell:open-external', async (_event, url: string) => {
   await shell.openExternal(url)
+})
+
+// Clipboard via Electron native module (works in file:// context, unlike navigator.clipboard)
+ipcMain.handle('clipboard:read', async () => {
+  return clipboard.readText()
+})
+
+ipcMain.handle('clipboard:write', async (_event, text: string) => {
+  clipboard.writeText(text)
 })

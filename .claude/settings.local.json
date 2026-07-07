@@ -26,7 +26,10 @@
       "Bash(git log:*)",
       "Bash(git checkout:*)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ssh -v phm_macmini@100.119.36.17 -o ConnectTimeout=10)",
+      "Bash(ping:*)",
+      "Bash(tailscale status:*)"
     ]
   }
 }
