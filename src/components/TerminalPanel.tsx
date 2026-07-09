@@ -4,8 +4,8 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
-import { workspaceStore } from '../stores/workspace-store'
 import { settingsStore } from '../stores/settings-store'
+import { ptyOutputRouter } from '../lib/pty-output-router'
 import '@xterm/xterm/css/xterm.css'
 
 interface TerminalPanelProps {
@@ -323,18 +323,29 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       fitAddon.fit()
     })
 
-    // Fix IME textarea position - force it to bottom left
+    // Fix IME textarea position - force it to bottom left.
+    // Only write a property when it actually differs from the target value.
+    // xterm re-applies inline styles as the cursor moves; writing identical
+    // values would still create style mutations that re-trigger the observer
+    // below, so the guard keeps this from churning every keystroke.
+    const IME_STYLE: Record<string, string> = {
+      position: 'fixed',
+      bottom: '80px',
+      left: '220px',
+      top: 'auto',
+      width: '1px',
+      height: '20px',
+      opacity: '0',
+      zIndex: '10'
+    }
     const fixImePosition = () => {
       const textarea = containerRef.current?.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement
-      if (textarea) {
-        textarea.style.position = 'fixed'
-        textarea.style.bottom = '80px'
-        textarea.style.left = '220px'
-        textarea.style.top = 'auto'
-        textarea.style.width = '1px'
-        textarea.style.height = '20px'
-        textarea.style.opacity = '0'
-        textarea.style.zIndex = '10'
+      if (!textarea) return
+      const style = textarea.style as unknown as Record<string, string>
+      for (const prop in IME_STYLE) {
+        if (style[prop] !== IME_STYLE[prop]) {
+          style[prop] = IME_STYLE[prop]
+        }
       }
     }
 
@@ -430,13 +441,10 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       })
     })
 
-    // Handle terminal output
-    const unsubscribeOutput = window.electronAPI.pty.onOutput((id, data) => {
-      if (id === terminalId) {
-        terminal.write(data)
-        // Update activity time when there's output
-        workspaceStore.updateTerminalActivity(terminalId)
-      }
+    // Handle terminal output. Routed by id so only this terminal's handler is
+    // invoked per chunk (activity is updated once, globally, in App).
+    const unsubscribeOutput = ptyOutputRouter.onId(terminalId, (data) => {
+      terminal.write(data)
     })
 
     // Handle terminal exit

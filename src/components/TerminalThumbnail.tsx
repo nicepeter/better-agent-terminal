@@ -1,25 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
 import type { TerminalInstance } from '../types'
 import { ActivityIndicator } from './ActivityIndicator'
-
-// Global preview cache - persists across component unmounts
-const previewCache = new Map<string, string>()
-
-// Global listener setup - only once
-let globalListenerSetup = false
-const setupGlobalListener = () => {
-  if (globalListenerSetup) return
-  globalListenerSetup = true
-
-  window.electronAPI.pty.onOutput((id, data) => {
-    const prev = previewCache.get(id) || ''
-    const combined = prev + data
-    // Keep last 8 lines, clean ANSI codes for readability
-    const cleaned = combined.replace(/\x1b\[[0-9;]*m/g, '')
-    const lines = cleaned.split('\n').slice(-8)
-    previewCache.set(id, lines.join('\n'))
-  })
-}
+import { getPreview } from '../lib/preview-cache'
+import { previewTicker } from '../lib/ticker'
 
 interface TerminalThumbnailProps {
   terminal: TerminalInstance
@@ -46,22 +29,18 @@ export function TerminalThumbnail({
   onDragOver,
   onDrop
 }: TerminalThumbnailProps) {
-  const [preview, setPreview] = useState<string>(previewCache.get(terminal.id) || '')
+  const [preview, setPreview] = useState<string>(() => getPreview(terminal.id))
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const isClaudeCode = terminal.type === 'claude-code'
 
   useEffect(() => {
-    setupGlobalListener()
-
-    // Poll for updates from cache
-    const interval = setInterval(() => {
-      const cached = previewCache.get(terminal.id) || ''
-      setPreview(cached)
-    }, 500)
-
-    return () => clearInterval(interval)
+    // Poll the shared preview cache off ONE global 500ms ticker instead of a
+    // per-thumbnail timer. setPreview with an unchanged string is a no-op in React.
+    const update = () => setPreview(getPreview(terminal.id))
+    update()
+    return previewTicker.subscribe(update)
   }, [terminal.id])
 
   // Auto focus and select input when editing

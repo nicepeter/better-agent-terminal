@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { workspaceStore } from './stores/workspace-store'
 import { settingsStore } from './stores/settings-store'
+import { ptyOutputRouter } from './lib/pty-output-router'
 import { Sidebar } from './components/Sidebar'
 import { WorkspaceView } from './components/WorkspaceView'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -17,9 +18,11 @@ export default function App() {
       setState(workspaceStore.getState())
     })
 
-    // Global listener for all terminal output - updates activity for ALL terminals
-    // This is needed because WorkspaceView only renders terminals for the active workspace
-    const unsubscribeOutput = window.electronAPI.pty.onOutput((id) => {
+    // Single global subscriber that records activity for ALL terminals.
+    // This is the ONLY place activity is updated (TerminalPanel no longer
+    // duplicates it), routed through the shared dispatcher so output is not
+    // fanned out to every panel's listener.
+    const unsubscribeOutput = ptyOutputRouter.onAny((id) => {
       workspaceStore.updateTerminalActivity(id)
     })
 

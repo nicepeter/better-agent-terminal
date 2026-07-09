@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { Workspace, TerminalInstance, AppState } from '../types'
+import { deletePreview } from '../lib/preview-cache'
 
 type Listener = () => void
 
@@ -16,6 +17,11 @@ class WorkspaceStore {
 
   // Remember focused terminal for each workspace (not persisted across restart)
   private workspaceFocusedTerminals: Map<string, string> = new Map()
+
+  // Last output time per terminal id. Kept OUT of the immutable state so that
+  // high-frequency output does not rebuild the whole terminals array on every
+  // chunk. Read directly by ActivityIndicator on its own polling interval.
+  private activityTimes: Map<string, number> = new Map()
 
   getState(): AppState {
     return this.state
@@ -50,6 +56,12 @@ class WorkspaceStore {
   }
 
   removeWorkspace(id: string): void {
+    this.state.terminals
+      .filter(t => t.workspaceId === id)
+      .forEach(t => {
+        this.activityTimes.delete(t.id)
+        deletePreview(t.id)
+      })
     const terminals = this.state.terminals.filter(t => t.workspaceId !== id)
     const workspaces = this.state.workspaces.filter(w => w.id !== id)
 
@@ -149,9 +161,9 @@ class WorkspaceStore {
       type,
       title: type === 'claude-code' ? 'Code Agent' : `Terminal ${existingTerminals.length + 1}`,
       cwd: workspace.folderPath,
-      scrollbackBuffer: [],
-      lastActivityTime: Date.now()
+      scrollbackBuffer: []
     }
+    this.activityTimes.set(terminal.id, Date.now())
 
     // Only auto-focus Claude Code, keep current focus for regular terminals
     const shouldFocus = type === 'claude-code' || !this.state.focusedTerminalId
@@ -168,6 +180,8 @@ class WorkspaceStore {
   }
 
   removeTerminal(id: string): void {
+    this.activityTimes.delete(id)
+    deletePreview(id)
     const terminals = this.state.terminals.filter(t => t.id !== id)
 
     this.state = {
@@ -291,30 +305,29 @@ class WorkspaceStore {
   }
 
   // Activity tracking
-  private lastActivityNotify: number = 0
-
+  //
+  // Called for every output chunk of every terminal. Must stay O(1) and must
+  // NOT rebuild state or notify — otherwise heavy output (builds, streaming)
+  // rebuilds the whole terminals array thousands of times a second. Consumers
+  // (ActivityIndicator) read via getTerminalActivity on their own interval.
   updateTerminalActivity(id: string): void {
-    const now = Date.now()
-    this.state = {
-      ...this.state,
-      terminals: this.state.terminals.map(t =>
-        t.id === id ? { ...t, lastActivityTime: now } : t
-      )
-    }
-    // Throttle notifications to avoid excessive re-renders (max once per 500ms)
-    if (now - this.lastActivityNotify > 500) {
-      this.lastActivityNotify = now
-      this.notify()
-    }
+    this.activityTimes.set(id, Date.now())
+  }
+
+  getTerminalActivity(id: string): number | null {
+    return this.activityTimes.get(id) ?? null
   }
 
   getWorkspaceLastActivity(workspaceId: string): number | null {
     const terminals = this.getWorkspaceTerminals(workspaceId)
-    const lastActivities = terminals
-      .map(t => t.lastActivityTime)
-      .filter((time): time is number => time !== undefined)
-
-    return lastActivities.length > 0 ? Math.max(...lastActivities) : null
+    let max: number | null = null
+    for (const t of terminals) {
+      const time = this.activityTimes.get(t.id)
+      if (time !== undefined && (max === null || time > max)) {
+        max = time
+      }
+    }
+    return max
   }
 
   // Persistence
@@ -352,7 +365,6 @@ class WorkspaceStore {
           alias: t.alias,
           cwd: t.cwd,
           scrollbackBuffer: [],
-          lastActivityTime: undefined,
           needsRestore: true  // Mark for PTY restoration
         }))
 

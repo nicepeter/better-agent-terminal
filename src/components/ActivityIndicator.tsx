@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { workspaceStore } from '../stores/workspace-store'
+import { activityTicker } from '../lib/ticker'
 
 interface ActivityIndicatorProps {
   lastActivityTime?: number | null
@@ -23,8 +24,7 @@ export function ActivityIndicator({
       let lastActivityTime: number | null = propActivityTime ?? null
 
       if (terminalId) {
-        const terminal = workspaceStore.getState().terminals.find(t => t.id === terminalId)
-        lastActivityTime = terminal?.lastActivityTime ?? null
+        lastActivityTime = workspaceStore.getTerminalActivity(terminalId)
       } else if (workspaceId) {
         lastActivityTime = workspaceStore.getWorkspaceLastActivity(workspaceId)
       }
@@ -41,10 +41,8 @@ export function ActivityIndicator({
 
     checkActivity()
 
-    // Check every 1 second
-    const interval = setInterval(checkActivity, 1000)
-
-    return () => clearInterval(interval)
+    // Driven by ONE shared 1s ticker instead of a per-indicator timer.
+    return activityTicker.subscribe(checkActivity)
   }, [propActivityTime, workspaceId, terminalId])
 
   const className = `activity-indicator ${size} ${isActive ? 'active' : 'inactive'} ${onClick ? 'clickable' : ''}`

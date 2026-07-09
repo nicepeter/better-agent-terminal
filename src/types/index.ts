@@ -29,7 +29,6 @@ export interface TerminalInstance {
   pid?: number;
   cwd: string;
   scrollbackBuffer: string[];
-  lastActivityTime?: number;
   needsRestore?: boolean;  // true if PTY needs to be created after app restart
 }
 
