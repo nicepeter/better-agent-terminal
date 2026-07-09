@@ -298,7 +298,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       fontSize: settingsStore.getSettings().fontSize,
       fontFamily: '"SF Mono", Menlo, Monaco, "Courier New", monospace',
       cursorBlink: true,
-      scrollback: 10000,
+      scrollback: 1000,
       convertEol: true,
       allowProposedApi: true,
       allowTransparency: true,
@@ -441,11 +441,28 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       })
     })
 
-    // Handle terminal output. Routed by id so only this terminal's handler is
-    // invoked per chunk (activity is updated once, globally, in App).
-    const unsubscribeOutput = ptyOutputRouter.onId(terminalId, (data) => {
-      terminal.write(data)
-    })
+    // Replay buffered history (held in the main process, so it survives
+    // renderer reloads / re-mounts) BEFORE subscribing to live output, so the
+    // restored scrollback stays in order ahead of new data. Live chunks that
+    // arrive during the short fetch are preserved in the main-process buffer
+    // and will be present on the next mount.
+    let unsubscribeOutput = () => {}
+    let disposed = false
+    ;(async () => {
+      try {
+        const history = await window.electronAPI.pty.getBuffer(terminalId)
+        if (disposed) return
+        if (history) terminal.write(history)
+      } catch (err) {
+        console.error('Failed to restore terminal buffer:', err)
+      }
+      if (disposed) return
+      // Routed by id so only this terminal's handler runs per chunk (activity
+      // is updated once, globally, in App).
+      unsubscribeOutput = ptyOutputRouter.onId(terminalId, (data) => {
+        terminal.write(data)
+      })
+    })()
 
     // Handle terminal exit
     const unsubscribeExit = window.electronAPI.pty.onExit((id, exitCode) => {
@@ -481,6 +498,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
     container.addEventListener('drop', handleDrop, true)
 
     return () => {
+      disposed = true
       unsubscribeOutput()
       unsubscribeExit()
       resizeObserver.disconnect()

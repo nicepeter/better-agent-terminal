@@ -156,6 +156,10 @@ ipcMain.handle('pty:get-cwd', async (_event, id: string) => {
   return ptyManager?.getCwd(id)
 })
 
+ipcMain.handle('pty:get-buffer', async (_event, id: string) => {
+  return ptyManager?.getBuffer(id) ?? ''
+})
+
 ipcMain.handle('dialog:select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
     properties: ['openDirectory']

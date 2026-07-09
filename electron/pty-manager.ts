@@ -20,7 +20,16 @@ interface PtyInstance {
   type: 'terminal' | 'claude-code'
   cwd: string
   usePty: boolean
+  // Rolling copy of recent raw output, kept here in the main process so it
+  // survives renderer reloads (HMR / full reload) and terminal re-mounts.
+  // Replayed into xterm when a panel (re)mounts. See getBuffer().
+  outputChunks: string[]
+  outputBytes: number
 }
+
+// Cap of retained output per terminal. Comfortably covers ~1000 lines of
+// scrollback worth of replay while keeping main-process memory bounded.
+const MAX_BUFFER_BYTES = 256 * 1024
 
 export class PtyManager {
   private instances: Map<string, PtyInstance> = new Map()
@@ -117,6 +126,7 @@ export class PtyManager {
         })
 
         ptyProcess.onData((data: string) => {
+          this.appendOutput(id, data)
           if (!this.window.isDestroyed()) {
             this.window.webContents.send('pty:output', id, data)
           }
@@ -130,7 +140,7 @@ export class PtyManager {
           this.instances.delete(id)
         })
 
-        this.instances.set(id, { process: ptyProcess, type, cwd, usePty: true })
+        this.instances.set(id, { process: ptyProcess, type, cwd, usePty: true, outputChunks: [], outputBytes: 0 })
         usedPty = true
         console.log('Created terminal using node-pty')
       } catch (e) {
@@ -170,14 +180,18 @@ export class PtyManager {
         })
 
         childProcess.stdout?.on('data', (data: Buffer) => {
+          const text = data.toString()
+          this.appendOutput(id, text)
           if (!this.window.isDestroyed()) {
-            this.window.webContents.send('pty:output', id, data.toString())
+            this.window.webContents.send('pty:output', id, text)
           }
         })
 
         childProcess.stderr?.on('data', (data: Buffer) => {
+          const text = data.toString()
+          this.appendOutput(id, text)
           if (!this.window.isDestroyed()) {
-            this.window.webContents.send('pty:output', id, data.toString())
+            this.window.webContents.send('pty:output', id, text)
           }
         })
 
@@ -201,7 +215,7 @@ export class PtyManager {
           this.window.webContents.send('pty:output', id, `[Terminal - child_process mode]\r\n`)
         }
 
-        this.instances.set(id, { process: childProcess, type, cwd, usePty: false })
+        this.instances.set(id, { process: childProcess, type, cwd, usePty: false, outputChunks: [], outputBytes: 0 })
         console.log('Created terminal using child_process fallback')
       } catch (error) {
         console.error('Failed to create terminal:', error)
@@ -254,6 +268,25 @@ export class PtyManager {
       return this.create({ id, cwd, type, shell, workspacePath })
     }
     return false
+  }
+
+  private appendOutput(id: string, data: string): void {
+    const instance = this.instances.get(id)
+    if (!instance) return
+    instance.outputChunks.push(data)
+    instance.outputBytes += data.length
+    // Drop whole chunks from the front until back under the cap. Keeping at
+    // least one chunk avoids an empty buffer when a single chunk exceeds the cap.
+    while (instance.outputBytes > MAX_BUFFER_BYTES && instance.outputChunks.length > 1) {
+      const removed = instance.outputChunks.shift()!
+      instance.outputBytes -= removed.length
+    }
+  }
+
+  // Recent raw output for replay when a renderer (re)mounts a terminal.
+  getBuffer(id: string): string {
+    const instance = this.instances.get(id)
+    return instance ? instance.outputChunks.join('') : ''
   }
 
   getCwd(id: string): string | null {
