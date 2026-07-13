@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
+import { CanvasAddon } from '@xterm/addon-canvas'
 import { settingsStore } from '../stores/settings-store'
 import { ptyOutputRouter } from '../lib/pty-output-router'
 import '@xterm/xterm/css/xterm.css'
@@ -26,6 +27,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const canvasAddonRef = useRef<CanvasAddon | null>(null)
   const searchAddonRef = useRef<SearchAddon | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
@@ -301,7 +303,9 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       scrollback: 1000,
       convertEol: true,
       allowProposedApi: true,
-      allowTransparency: true,
+      // Background is an opaque solid colour, so transparency (per-cell alpha
+      // blending) is unnecessary overhead — costly on every render incl. scroll.
+      allowTransparency: false,
       scrollOnOutput: true
     })
 
@@ -507,9 +511,38 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       container.removeEventListener('dragover', handleDragOver, true)
       container.removeEventListener('dragleave', handleDragLeave, true)
       container.removeEventListener('drop', handleDrop, true)
-      terminal.dispose()
+      terminal.dispose() // also disposes the Canvas addon if attached
+      canvasAddonRef.current = null
     }
   }, [terminalId, backgroundColor, textColor, handleDragEnter, handleDragOver, handleDragLeave, handleDrop])
+
+  // GPU-backed (Canvas) renderer, attached ONLY to the currently-visible
+  // terminal. The DOM renderer is cheap for typing but re-lays-out every row on
+  // scroll; Canvas draws the viewport to a <canvas> so scrolling is cheap. We
+  // can't give all ~20 mounted terminals a Canvas (too many GPU surfaces -> the
+  // browser thrashes/falls back to CPU and it gets slower than DOM). Since only
+  // one terminal is visible at a time, load Canvas on show and dispose on hide,
+  // so at most one GPU surface exists. Disposing the addon reverts to DOM.
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) return
+    const visible = isActive && workspaceIsActive
+    if (visible && !canvasAddonRef.current) {
+      try {
+        const addon = new CanvasAddon()
+        terminal.loadAddon(addon)
+        canvasAddonRef.current = addon
+        // Ensure it paints at the right size immediately after attaching.
+        fitAddonRef.current?.fit()
+        terminal.refresh(0, terminal.rows - 1)
+      } catch (err) {
+        console.warn('CanvasAddon failed, staying on DOM renderer:', err)
+      }
+    } else if (!visible && canvasAddonRef.current) {
+      canvasAddonRef.current.dispose()
+      canvasAddonRef.current = null
+    }
+  }, [isActive, workspaceIsActive])
 
   // Listen for font size changes from settings
   useEffect(() => {

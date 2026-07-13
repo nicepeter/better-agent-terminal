@@ -12,6 +12,7 @@
     "postinstall": "echo 'Run electron-rebuild manually if node-pty is needed'"
   },
   "dependencies": {
+    "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-unicode11": "^0.8.0",
