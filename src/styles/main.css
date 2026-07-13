@@ -1073,16 +1073,17 @@ body {
   animation: breathe-inactive 3s ease-in-out infinite alternate;
 }
 
+/* Animate only opacity + transform (GPU-composited, no repaint). Animating
+   box-shadow forced a main-thread repaint every frame; with ~40 indicators
+   that saturated the renderer. The static box-shadow on the base rule stays. */
 @keyframes breathe-active {
   from {
     opacity: 0.7;
     transform: scale(0.9);
-    box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
   }
   to {
     opacity: 1;
     transform: scale(1);
-    box-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
   }
 }
 
@@ -1090,12 +1091,10 @@ body {
   from {
     opacity: 0.5;
     transform: scale(0.95);
-    box-shadow: 0 0 3px rgba(16, 185, 129, 0.3);
   }
   to {
     opacity: 0.8;
     transform: scale(1);
-    box-shadow: 0 0 5px rgba(16, 185, 129, 0.4);
   }
 }
 
