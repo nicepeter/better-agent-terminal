@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
-import { CanvasAddon } from '@xterm/addon-canvas'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { settingsStore } from '../stores/settings-store'
 import { ptyOutputRouter } from '../lib/pty-output-router'
 import '@xterm/xterm/css/xterm.css'
@@ -23,12 +23,22 @@ interface ContextMenu {
   hasSelection: boolean
 }
 
+// Max output retained while a terminal is hidden (older content scrolls off
+// anyway). Roughly one scrollback's worth of bytes.
+const MAX_PENDING_BYTES = 256 * 1024
+
 export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive = true, backgroundColor, textColor }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
-  const canvasAddonRef = useRef<CanvasAddon | null>(null)
+  const webglAddonRef = useRef<WebglAddon | null>(null)
   const searchAddonRef = useRef<SearchAddon | null>(null)
+  // While a terminal is hidden we buffer its output instead of writing it to
+  // xterm, so hidden terminals (e.g. background Claude sessions redrawing their
+  // TUI) don't parse+render on the main thread. Flushed when it becomes visible.
+  const visibleRef = useRef(false)
+  const pendingWritesRef = useRef<string[]>([])
+  const pendingBytesRef = useRef(0)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -462,9 +472,20 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       }
       if (disposed) return
       // Routed by id so only this terminal's handler runs per chunk (activity
-      // is updated once, globally, in App).
+      // is updated once, globally, in App). Only the VISIBLE terminal writes to
+      // xterm; hidden ones buffer, so background output (e.g. Claude TUIs
+      // redrawing) doesn't parse+render on the main thread. Flushed on show.
       unsubscribeOutput = ptyOutputRouter.onId(terminalId, (data) => {
-        terminal.write(data)
+        if (visibleRef.current) {
+          terminal.write(data)
+          return
+        }
+        pendingWritesRef.current.push(data)
+        pendingBytesRef.current += data.length
+        while (pendingBytesRef.current > MAX_PENDING_BYTES && pendingWritesRef.current.length > 1) {
+          const removed = pendingWritesRef.current.shift()!
+          pendingBytesRef.current -= removed.length
+        }
       })
     })()
 
@@ -511,36 +532,59 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       container.removeEventListener('dragover', handleDragOver, true)
       container.removeEventListener('dragleave', handleDragLeave, true)
       container.removeEventListener('drop', handleDrop, true)
-      terminal.dispose() // also disposes the Canvas addon if attached
-      canvasAddonRef.current = null
+      terminal.dispose() // also disposes the WebGL addon if attached
+      webglAddonRef.current = null
+      pendingWritesRef.current = []
+      pendingBytesRef.current = 0
     }
   }, [terminalId, backgroundColor, textColor, handleDragEnter, handleDragOver, handleDragLeave, handleDrop])
 
-  // GPU-backed (Canvas) renderer, attached ONLY to the currently-visible
-  // terminal. The DOM renderer is cheap for typing but re-lays-out every row on
-  // scroll; Canvas draws the viewport to a <canvas> so scrolling is cheap. We
-  // can't give all ~20 mounted terminals a Canvas (too many GPU surfaces -> the
-  // browser thrashes/falls back to CPU and it gets slower than DOM). Since only
-  // one terminal is visible at a time, load Canvas on show and dispose on hide,
-  // so at most one GPU surface exists. Disposing the addon reverts to DOM.
+  // GPU (WebGL) renderer, attached ONLY to the currently-visible terminal.
+  // The DOM renderer re-lays-out every row on the main thread each scroll tick;
+  // WebGL batches the whole viewport into GPU draw calls so scroll is cheap and
+  // stays off the main thread. We can't give all ~20 mounted terminals a WebGL
+  // context (Chromium caps live contexts at ~16 -> context loss/thrash), but
+  // only one terminal is visible at a time, so load WebGL on show and dispose
+  // on hide — at most one context exists. Disposing reverts to the DOM renderer.
   useEffect(() => {
     const terminal = terminalRef.current
     if (!terminal) return
     const visible = isActive && workspaceIsActive
-    if (visible && !canvasAddonRef.current) {
-      try {
-        const addon = new CanvasAddon()
-        terminal.loadAddon(addon)
-        canvasAddonRef.current = addon
-        // Ensure it paints at the right size immediately after attaching.
-        fitAddonRef.current?.fit()
-        terminal.refresh(0, terminal.rows - 1)
-      } catch (err) {
-        console.warn('CanvasAddon failed, staying on DOM renderer:', err)
+    if (visible) {
+      // Attach the GPU renderer for the now-visible terminal.
+      if (!webglAddonRef.current) {
+        try {
+          const addon = new WebglAddon()
+          // If the GPU context is lost, drop back to DOM cleanly instead of
+          // freezing; next show will try WebGL again.
+          addon.onContextLoss(() => {
+            addon.dispose()
+            if (webglAddonRef.current === addon) webglAddonRef.current = null
+          })
+          terminal.loadAddon(addon)
+          webglAddonRef.current = addon
+        } catch (err) {
+          console.warn('WebglAddon failed, staying on DOM renderer:', err)
+        }
       }
-    } else if (!visible && canvasAddonRef.current) {
-      canvasAddonRef.current.dispose()
-      canvasAddonRef.current = null
+      // Flush output that was buffered while hidden, then resume live writes.
+      if (pendingWritesRef.current.length > 0) {
+        const pending = pendingWritesRef.current.join('')
+        pendingWritesRef.current = []
+        pendingBytesRef.current = 0
+        terminal.write(pending)
+      }
+      visibleRef.current = true
+      fitAddonRef.current?.fit()
+      terminal.refresh(0, terminal.rows - 1)
+    } else {
+      // Hidden: buffer further output (see onId handler) and drop the GPU
+      // context so at most one WebGL context exists.
+      visibleRef.current = false
+      if (webglAddonRef.current) {
+        webglAddonRef.current.dispose()
+        webglAddonRef.current = null
+      }
     }
   }, [isActive, workspaceIsActive])
 
