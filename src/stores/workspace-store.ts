@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { Workspace, TerminalInstance, AppState } from '../types'
-import { deletePreview } from '../lib/preview-cache'
 
 type Listener = () => void
 
@@ -58,10 +57,7 @@ class WorkspaceStore {
   removeWorkspace(id: string): void {
     this.state.terminals
       .filter(t => t.workspaceId === id)
-      .forEach(t => {
-        this.activityTimes.delete(t.id)
-        deletePreview(t.id)
-      })
+      .forEach(t => this.activityTimes.delete(t.id))
     const terminals = this.state.terminals.filter(t => t.workspaceId !== id)
     const workspaces = this.state.workspaces.filter(w => w.id !== id)
 
@@ -181,7 +177,6 @@ class WorkspaceStore {
 
   removeTerminal(id: string): void {
     this.activityTimes.delete(id)
-    deletePreview(id)
     const terminals = this.state.terminals.filter(t => t.id !== id)
 
     this.state = {

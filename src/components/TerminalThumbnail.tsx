@@ -1,8 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import type { TerminalInstance } from '../types'
 import { ActivityIndicator } from './ActivityIndicator'
-import { getPreview } from '../lib/preview-cache'
-import { previewTicker } from '../lib/ticker'
 
 interface TerminalThumbnailProps {
   terminal: TerminalInstance
@@ -29,19 +27,10 @@ export function TerminalThumbnail({
   onDragOver,
   onDrop
 }: TerminalThumbnailProps) {
-  const [preview, setPreview] = useState<string>(() => getPreview(terminal.id))
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const isClaudeCode = terminal.type === 'claude-code'
-
-  useEffect(() => {
-    // Poll the shared preview cache off ONE global 500ms ticker instead of a
-    // per-thumbnail timer. setPreview with an unchanged string is a no-op in React.
-    const update = () => setPreview(getPreview(terminal.id))
-    update()
-    return previewTicker.subscribe(update)
-  }, [terminal.id])
 
   // Auto focus and select input when editing
   useEffect(() => {
@@ -125,9 +114,6 @@ export function TerminalThumbnail({
           )}
         </div>
         <ActivityIndicator terminalId={terminal.id} size="small" />
-      </div>
-      <div className="thumbnail-preview">
-        {preview || '$ _'}
       </div>
     </div>
   )

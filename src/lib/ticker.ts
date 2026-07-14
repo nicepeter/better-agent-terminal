@@ -31,6 +31,5 @@ class Ticker {
   }
 }
 
-// One timer drives all activity dots; one drives all thumbnail previews.
+// One shared timer drives all activity dots.
 export const activityTicker = new Ticker(1000)
-export const previewTicker = new Ticker(500)
