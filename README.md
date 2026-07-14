@@ -36,6 +36,7 @@ Forked from [TonyQ's better-agent-terminal](https://github.com/tony1223/better-a
 - **Auto-focus Terminal** - Terminal automatically gets keyboard focus when switching workspaces
 
 ### Terminal Improvements
+- **Image / File Drag & Drop** - Drag an image or file onto a terminal to drop its path straight in — a fast way to point your coding agent at a screen (e.g. drop a screenshot, then ask Claude "look at this"). Paths are auto-quoted for spaces; multiple files are space-separated
 - **Per-Workspace Shell History** - Each workspace maintains its own `.terminal_history`
 - **Login Shell Support** - Loads `~/.zshrc` / `~/.bashrc` on startup
 - **Terminal State Preservation** - All workspaces stay mounted, terminals keep running when switching
@@ -47,6 +48,10 @@ Forked from [TonyQ's better-agent-terminal](https://github.com/tony1223/better-a
 - **4 New Soft Terminal Themes** - Additional color themes for terminals
 - **Workspace Color Badges** - Custom color indicators for each workspace
 - **Improved Workspace UI** - Better visual design
+
+### Performance (fixes slow / sticky scrolling & typing)
+- **Removed Terminal Thumbnails** - The biggest culprit behind laggy scrolling and typing. A live output preview was being recomputed and redrawn for *every* terminal on *every* line of output; with several terminals streaming (e.g. multiple Claude sessions), this saturated the CPU and made scrolling and keystrokes slow and sticky. Previews are gone — tabs now show just the title + activity indicator, and scrolling/typing stay smooth even with dozens of background sessions.
+- **GPU (WebGL) Rendering & Background Throttling** - The visible terminal renders via WebGL (smooth scrolling); hidden terminals buffer their output instead of parsing/rendering it, so background sessions no longer compete for the main thread that handles your scrolling and keystrokes.
 
 ---
 
