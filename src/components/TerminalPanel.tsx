@@ -6,6 +6,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { settingsStore } from '../stores/settings-store'
+import { workspaceStore } from '../stores/workspace-store'
 import { ptyOutputRouter } from '../lib/pty-output-router'
 import '@xterm/xterm/css/xterm.css'
 
@@ -45,6 +46,11 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
   const [showSearch, setShowSearch] = useState(false)
   const [searchText, setSearchText] = useState('')
 
+  const writeToPty = useCallback((data: string) => {
+    workspaceStore.markTerminalInteraction(terminalId)
+    window.electronAPI.pty.write(terminalId, data)
+  }, [terminalId])
+
   // Handle paste with text size checking
   const handlePasteText = useCallback((text: string) => {
     if (!text) return
@@ -59,14 +65,14 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       // Send chunks with small delays to prevent overwhelming the terminal
       chunks.forEach((chunk, index) => {
         setTimeout(() => {
-          window.electronAPI.pty.write(terminalId, chunk)
+          writeToPty(chunk)
         }, index * 50) // 50ms delay between chunks
       })
     } else {
       // Normal sized text, send directly
-      window.electronAPI.pty.write(terminalId, text)
+      writeToPty(text)
     }
-  }, [terminalId])
+  }, [writeToPty])
 
   // Handle context menu actions
   const handleCopy = () => {
@@ -149,9 +155,9 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
 
       // Write paths to terminal (joined by space for multiple files)
       const pathString = paths.join(' ')
-      window.electronAPI.pty.write(terminalId, pathString)
+      writeToPty(pathString)
     }
-  }, [terminalId])
+  }, [writeToPty])
 
   // Handle terminal resize and focus when becoming active
   useEffect(() => {
@@ -379,7 +385,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
 
     // Handle terminal input
     terminal.onData((data) => {
-      window.electronAPI.pty.write(terminalId, data)
+      writeToPty(data)
     })
 
     // Handle copy and paste shortcuts
@@ -388,7 +394,7 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       // Only handle keydown to prevent double trigger
       if (event.type === 'keydown' && event.shiftKey && event.key === 'Enter') {
         event.preventDefault()
-        window.electronAPI.pty.write(terminalId, '\n')
+        writeToPty('\n')
         return false
       }
       // Cmd+F (Mac) or Ctrl+F (Windows/Linux) for search
