@@ -100,21 +100,25 @@ export function TerminalOverview({
   }, [refreshOne, terminals])
 
   const normalizedQuery = query.trim().toLowerCase()
-  const groups = useMemo(() => workspaces.map(workspace => {
-    const workspaceTerminals = terminals.filter(terminal => {
-      if (terminal.workspaceId !== workspace.id) return false
+  const visibleTerminals = useMemo(() => {
+    return terminals.filter(terminal => {
       const active = isActive(terminal.id)
       if (filter === 'active' && !active) return false
       if (filter === 'quiet' && active) return false
       if (!normalizedQuery) return true
       const terminalName = terminal.alias || terminal.title
-      const workspaceName = workspace.alias || workspace.name
-      return `${terminalName} ${workspaceName} ${workspace.folderPath}`
+      const workspace = workspaces.find(item => item.id === terminal.workspaceId)
+      const workspaceName = workspace?.alias || workspace?.name || ''
+      return `${terminalName} ${workspaceName} ${workspace?.folderPath || ''}`
         .toLowerCase()
         .includes(normalizedQuery)
     })
-    return { workspace, terminals: workspaceTerminals }
-  }).filter(group => group.terminals.length > 0), [
+      .sort((a, b) => {
+        const aTime = workspaceStore.getTerminalActivity(a.id) ?? 0
+        const bTime = workspaceStore.getTerminalActivity(b.id) ?? 0
+        return bTime - aTime
+      })
+  }, [
     filter,
     isActive,
     normalizedQuery,
@@ -171,13 +175,8 @@ export function TerminalOverview({
       </div>
 
       <div className="overview-list">
-        {groups.map(({ workspace, terminals: groupTerminals }) => (
-          <section className="overview-workspace" key={workspace.id}>
-            <div className="overview-workspace-title">
-              <span>{workspace.alias || workspace.name}</span>
-              <span>{groupTerminals.length}</span>
-            </div>
-            {groupTerminals.map(terminal => {
+        {visibleTerminals.map(terminal => {
+              const workspace = workspaces.find(item => item.id === terminal.workspaceId)
               const active = isActive(terminal.id)
               const activityTime = workspaceStore.getTerminalActivity(terminal.id)
               const snapshot = snapshots[terminal.id]
@@ -206,7 +205,7 @@ export function TerminalOverview({
                       </span>
                     </div>
                     <div className="overview-terminal-meta">
-                      {formatTime(activityTime)}
+                      {workspace?.alias || workspace?.name || '未知 workspace'} · {formatTime(activityTime)}
                       {snapshot && ` · 快照 ${formatTime(snapshot.updatedAt)}`}
                     </div>
                     {snapshot && <div className="overview-snapshot">{snapshot.text}</div>}
@@ -225,9 +224,7 @@ export function TerminalOverview({
                 </div>
               )
             })}
-          </section>
-        ))}
-        {groups.length === 0 && (
+        {visibleTerminals.length === 0 && (
           <div className="overview-empty">沒有符合條件的 terminal</div>
         )}
       </div>

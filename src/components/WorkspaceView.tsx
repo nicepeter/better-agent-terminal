@@ -106,6 +106,7 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
     if (terminal) {
       const cwd = await window.electronAPI.pty.getCwd(id) || terminal.cwd
       const shell = await getShellFromSettings()
+      workspaceStore.startTerminalActivityGrace(id)
       await window.electronAPI.pty.restart(id, cwd, shell, workspace.folderPath)
       workspaceStore.updateTerminalCwd(id, cwd)
     }

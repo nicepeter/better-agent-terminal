@@ -21,6 +21,10 @@ class WorkspaceStore {
   // high-frequency output does not rebuild the whole terminals array on every
   // chunk. Read directly by ActivityIndicator on its own polling interval.
   private activityTimes: Map<string, number> = new Map()
+  // A newly created/restored shell emits its prompt immediately. That output
+  // is startup noise, not evidence that a task is running, so activity
+  // tracking starts after a short grace period.
+  private activityGraceUntil: Map<string, number> = new Map()
 
   getState(): AppState {
     return this.state
@@ -57,7 +61,10 @@ class WorkspaceStore {
   removeWorkspace(id: string): void {
     this.state.terminals
       .filter(t => t.workspaceId === id)
-      .forEach(t => this.activityTimes.delete(t.id))
+      .forEach(t => {
+        this.activityTimes.delete(t.id)
+        this.activityGraceUntil.delete(t.id)
+      })
     const terminals = this.state.terminals.filter(t => t.workspaceId !== id)
     const workspaces = this.state.workspaces.filter(w => w.id !== id)
 
@@ -159,7 +166,7 @@ class WorkspaceStore {
       cwd: workspace.folderPath,
       scrollbackBuffer: []
     }
-    this.activityTimes.set(terminal.id, Date.now())
+    this.activityGraceUntil.set(terminal.id, Date.now() + 2000)
 
     // Only auto-focus Claude Code, keep current focus for regular terminals
     const shouldFocus = type === 'claude-code' || !this.state.focusedTerminalId
@@ -177,6 +184,7 @@ class WorkspaceStore {
 
   removeTerminal(id: string): void {
     this.activityTimes.delete(id)
+    this.activityGraceUntil.delete(id)
     const terminals = this.state.terminals.filter(t => t.id !== id)
 
     this.state = {
@@ -306,7 +314,17 @@ class WorkspaceStore {
   // rebuilds the whole terminals array thousands of times a second. Consumers
   // (ActivityIndicator) read via getTerminalActivity on their own interval.
   updateTerminalActivity(id: string): void {
+    const graceUntil = this.activityGraceUntil.get(id)
+    if (graceUntil !== undefined) {
+      if (Date.now() < graceUntil) return
+      this.activityGraceUntil.delete(id)
+    }
     this.activityTimes.set(id, Date.now())
+  }
+
+  startTerminalActivityGrace(id: string): void {
+    this.activityTimes.delete(id)
+    this.activityGraceUntil.set(id, Date.now() + 2000)
   }
 
   getTerminalActivity(id: string): number | null {
@@ -362,6 +380,8 @@ class WorkspaceStore {
           scrollbackBuffer: [],
           needsRestore: true  // Mark for PTY restoration
         }))
+        const graceUntil = Date.now() + 2000
+        terminals.forEach(terminal => this.activityGraceUntil.set(terminal.id, graceUntil))
 
         this.state = {
           ...this.state,
