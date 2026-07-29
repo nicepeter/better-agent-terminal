@@ -6,12 +6,14 @@ import { Sidebar } from './components/Sidebar'
 import { WorkspaceView } from './components/WorkspaceView'
 import { SettingsPanel } from './components/SettingsPanel'
 import { AboutPanel } from './components/AboutPanel'
+import { TerminalOverview } from './components/TerminalOverview'
 import type { AppState } from './types'
 
 export default function App() {
   const [state, setState] = useState<AppState>(workspaceStore.getState())
   const [showSettings, setShowSettings] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const [showTerminalOverview, setShowTerminalOverview] = useState(false)
 
   useEffect(() => {
     const unsubscribe = workspaceStore.subscribe(() => {
@@ -80,6 +82,8 @@ export default function App() {
         }}
         onOpenSettings={() => setShowSettings(true)}
         onOpenAbout={() => setShowAbout(true)}
+        onOpenTerminalOverview={() => setShowTerminalOverview(true)}
+        terminalCount={state.terminals.length}
       />
       <main className="main-content">
         {state.workspaces.length > 0 ? (
@@ -105,6 +109,18 @@ export default function App() {
           </div>
         )}
       </main>
+      {showTerminalOverview && (
+        <TerminalOverview
+          workspaces={state.workspaces}
+          terminals={state.terminals}
+          onClose={() => setShowTerminalOverview(false)}
+          onSelectTerminal={(workspaceId, terminalId) => {
+            workspaceStore.setActiveWorkspace(workspaceId)
+            workspaceStore.setFocusedTerminal(terminalId)
+            setShowTerminalOverview(false)
+          }}
+        />
+      )}
       {showSettings && (
         <SettingsPanel onClose={() => setShowSettings(false)} />
       )}

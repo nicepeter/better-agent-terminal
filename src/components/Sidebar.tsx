@@ -16,6 +16,8 @@ interface SidebarProps {
   onReorderWorkspaces: (fromIndex: number, toIndex: number) => void
   onOpenSettings: () => void
   onOpenAbout: () => void
+  onOpenTerminalOverview: () => void
+  terminalCount: number
 }
 
 const PRESET_COLORS = [
@@ -53,7 +55,9 @@ export function Sidebar({
   onSetWorkspaceColors,
   onReorderWorkspaces,
   onOpenSettings,
-  onOpenAbout
+  onOpenAbout,
+  onOpenTerminalOverview,
+  terminalCount
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -289,7 +293,16 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">Workspaces</div>
+      <div className="sidebar-header">
+        <span>Workspaces</span>
+        <button
+          className="overview-toggle-btn"
+          onClick={onOpenTerminalOverview}
+          title="查看所有 Terminal"
+        >
+          總覽{terminalCount > 0 && <span>{terminalCount}</span>}
+        </button>
+      </div>
       <div
         className={`workspace-list ${isDragOver ? 'drag-over' : ''}`}
         onDragEnter={handleDragEnter}
