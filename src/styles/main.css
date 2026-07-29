@@ -74,6 +74,12 @@ body {
   border-color: var(--accent-color);
 }
 
+.overview-toggle-btn.active {
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+  color: white;
+}
+
 .overview-toggle-btn span {
   min-width: 16px;
   padding: 1px 4px;
@@ -81,6 +87,10 @@ body {
   background: var(--accent-color);
   color: white;
   font-size: 9px;
+}
+
+.overview-toggle-btn.active span {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .workspace-list {

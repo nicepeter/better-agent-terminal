@@ -16,7 +16,8 @@ interface SidebarProps {
   onReorderWorkspaces: (fromIndex: number, toIndex: number) => void
   onOpenSettings: () => void
   onOpenAbout: () => void
-  onOpenTerminalOverview: () => void
+  onToggleTerminalOverview: () => void
+  isTerminalOverviewOpen: boolean
   terminalCount: number
 }
 
@@ -56,7 +57,8 @@ export function Sidebar({
   onReorderWorkspaces,
   onOpenSettings,
   onOpenAbout,
-  onOpenTerminalOverview,
+  onToggleTerminalOverview,
+  isTerminalOverviewOpen,
   terminalCount
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -296,9 +298,10 @@ export function Sidebar({
       <div className="sidebar-header">
         <span>Workspaces</span>
         <button
-          className="overview-toggle-btn"
-          onClick={onOpenTerminalOverview}
-          title="查看所有 Terminal"
+          className={`overview-toggle-btn ${isTerminalOverviewOpen ? 'active' : ''}`}
+          onClick={onToggleTerminalOverview}
+          title={isTerminalOverviewOpen ? '關閉 Terminal 總覽' : '查看所有 Terminal'}
+          aria-pressed={isTerminalOverviewOpen}
         >
           總覽{terminalCount > 0 && <span>{terminalCount}</span>}
         </button>

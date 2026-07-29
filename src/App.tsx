@@ -82,7 +82,8 @@ export default function App() {
         }}
         onOpenSettings={() => setShowSettings(true)}
         onOpenAbout={() => setShowAbout(true)}
-        onOpenTerminalOverview={() => setShowTerminalOverview(true)}
+        onToggleTerminalOverview={() => setShowTerminalOverview(current => !current)}
+        isTerminalOverviewOpen={showTerminalOverview}
         terminalCount={state.terminals.length}
       />
       <main className="main-content">
