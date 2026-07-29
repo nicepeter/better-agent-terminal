@@ -33,3 +33,7 @@ class Ticker {
 
 // One shared timer drives all activity dots.
 export const activityTicker = new Ticker(1000)
+
+// The overview only needs human-scale freshness. One 5s tick keeps status
+// labels current without rebuilding a 50-row list every second.
+export const overviewTicker = new Ticker(5000)

@@ -160,6 +160,11 @@ ipcMain.handle('pty:get-buffer', async (_event, id: string) => {
   return ptyManager?.getBuffer(id) ?? ''
 })
 
+ipcMain.handle('pty:get-buffer-tail', async (_event, id: string, maxBytes: number) => {
+  const safeMaxBytes = Math.max(0, Math.min(maxBytes, 16 * 1024))
+  return ptyManager?.getBufferTail(id, safeMaxBytes) ?? ''
+})
+
 ipcMain.handle('dialog:select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
     properties: ['openDirectory']

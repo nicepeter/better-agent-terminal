@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TerminalInstance, Workspace } from '../types'
 import { workspaceStore } from '../stores/workspace-store'
-import { activityTicker } from '../lib/ticker'
+import { overviewTicker } from '../lib/ticker'
 
 interface TerminalOverviewProps {
   workspaces: Workspace[]
@@ -60,7 +60,7 @@ export function TerminalOverview({
   const [refreshing, setRefreshing] = useState<Set<string>>(new Set())
 
   // The overview has one shared tick only while it is mounted/open.
-  useEffect(() => activityTicker.subscribe(() => setNow(Date.now())), [])
+  useEffect(() => overviewTicker.subscribe(() => setNow(Date.now())), [])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -78,7 +78,7 @@ export function TerminalOverview({
   const refreshOne = useCallback(async (terminalId: string) => {
     setRefreshing(current => new Set(current).add(terminalId))
     try {
-      const buffer = await window.electronAPI.pty.getBuffer(terminalId)
+      const buffer = await window.electronAPI.pty.getBufferTail(terminalId, 8 * 1024)
       setSnapshots(current => ({
         ...current,
         [terminalId]: {
@@ -96,8 +96,30 @@ export function TerminalOverview({
   }, [])
 
   const refreshAll = useCallback(async () => {
-    await Promise.all(terminals.map(terminal => refreshOne(terminal.id)))
-  }, [refreshOne, terminals])
+    const ids = terminals.map(terminal => terminal.id)
+    setRefreshing(new Set(ids))
+    try {
+      const results = await Promise.all(ids.map(async terminalId => {
+        const buffer = await window.electronAPI.pty.getBufferTail(terminalId, 8 * 1024)
+        return {
+          terminalId,
+          snapshot: {
+            text: summarizeBuffer(buffer) || '目前沒有可顯示的近期輸出',
+            updatedAt: Date.now()
+          }
+        }
+      }))
+      setSnapshots(current => {
+        const next = { ...current }
+        results.forEach(({ terminalId, snapshot }) => {
+          next[terminalId] = snapshot
+        })
+        return next
+      })
+    } finally {
+      setRefreshing(new Set())
+    }
+  }, [terminals])
 
   const normalizedQuery = query.trim().toLowerCase()
   const visibleTerminals = useMemo(() => {

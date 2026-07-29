@@ -289,6 +289,24 @@ export class PtyManager {
     return instance ? instance.outputChunks.join('') : ''
   }
 
+  // Small tail for on-demand overview snapshots. Walk backward through the
+  // chunk ring so opening a 50-terminal overview does not join and transfer
+  // every terminal's full 256KB replay buffer.
+  getBufferTail(id: string, maxBytes: number): string {
+    const instance = this.instances.get(id)
+    if (!instance || maxBytes <= 0) return ''
+
+    const chunks: string[] = []
+    let bytes = 0
+    for (let index = instance.outputChunks.length - 1; index >= 0 && bytes < maxBytes; index--) {
+      const chunk = instance.outputChunks[index]
+      const remaining = maxBytes - bytes
+      chunks.unshift(chunk.length > remaining ? chunk.slice(-remaining) : chunk)
+      bytes += Math.min(chunk.length, remaining)
+    }
+    return chunks.join('')
+  }
+
   getCwd(id: string): string | null {
     const instance = this.instances.get(id)
     if (instance) {

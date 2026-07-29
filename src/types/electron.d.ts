@@ -9,6 +9,7 @@ interface ElectronAPI {
     restart: (id: string, cwd: string, shell?: string) => Promise<boolean>
     getCwd: (id: string) => Promise<string | null>
     getBuffer: (id: string) => Promise<string>
+    getBufferTail: (id: string, maxBytes: number) => Promise<string>
     onOutput: (callback: (id: string, data: string) => void) => () => void
     onExit: (callback: (id: string, exitCode: number) => void) => () => void
   }
