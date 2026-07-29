@@ -28,9 +28,14 @@ export default function App() {
       workspaceStore.updateTerminalActivity(id)
     })
 
-    // Load saved workspaces and settings on startup
-    workspaceStore.load()
-    settingsStore.load()
+    // Shell settings must be available before WorkspaceView restores PTYs.
+    // Loading both concurrently can briefly restore every terminal with stale
+    // defaults (or an incomplete custom-shell selection).
+    const loadInitialState = async () => {
+      await settingsStore.load()
+      await workspaceStore.load()
+    }
+    loadInitialState()
 
     return () => {
       unsubscribe()

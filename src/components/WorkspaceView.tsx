@@ -16,8 +16,12 @@ interface WorkspaceViewProps {
 // Helper to get shell path from settings
 async function getShellFromSettings(): Promise<string | undefined> {
   const settings = settingsStore.getSettings()
-  if (settings.shell === 'custom' && settings.customShellPath) {
-    return settings.customShellPath
+  if (settings.shell === 'custom') {
+    const customPath = settings.customShellPath.trim()
+    if (customPath) return customPath
+    // A selected "custom" option without a path must never be passed to
+    // node-pty as the literal executable name "custom".
+    return window.electronAPI.settings.getShellPath('auto')
   }
   return window.electronAPI.settings.getShellPath(settings.shell)
 }
