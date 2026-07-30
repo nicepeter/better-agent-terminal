@@ -26,6 +26,10 @@ export interface TerminalInstance {
   type: 'terminal' | 'claude-code';
   title: string;
   alias?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  tabBackgroundColor?: string;
+  tabTextColor?: string;
   pid?: number;
   cwd: string;
   scrollbackBuffer: string[];

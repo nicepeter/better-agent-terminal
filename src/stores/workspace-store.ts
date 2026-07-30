@@ -209,6 +209,21 @@ class WorkspaceStore {
     this.save()
   }
 
+  setTerminalAppearance(
+    id: string,
+    appearance: Pick<TerminalInstance, 'backgroundColor' | 'textColor' | 'tabBackgroundColor' | 'tabTextColor'>
+  ): void {
+    this.state = {
+      ...this.state,
+      terminals: this.state.terminals.map(t =>
+        t.id === id ? { ...t, ...appearance } : t
+      )
+    }
+
+    this.notify()
+    this.save()
+  }
+
   reorderTerminals(workspaceId: string, fromIndex: number, toIndex: number): void {
     // Get only regular terminals for this workspace (matching what ThumbnailBar shows)
     const regularTerminals = this.state.terminals.filter(
@@ -350,6 +365,10 @@ class WorkspaceStore {
       type: t.type,
       title: t.title,
       alias: t.alias,
+      backgroundColor: t.backgroundColor,
+      textColor: t.textColor,
+      tabBackgroundColor: t.tabBackgroundColor,
+      tabTextColor: t.tabTextColor,
       cwd: t.cwd
     }))
 
@@ -374,6 +393,10 @@ class WorkspaceStore {
           type: t.type,
           title: t.title,
           alias: t.alias,
+          backgroundColor: t.backgroundColor,
+          textColor: t.textColor,
+          tabBackgroundColor: t.tabBackgroundColor,
+          tabTextColor: t.tabTextColor,
           cwd: t.cwd,
           scrollbackBuffer: [],
           needsRestore: true  // Mark for PTY restoration

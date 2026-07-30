@@ -124,6 +124,13 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
     workspaceStore.renameTerminal(id, alias)
   }, [])
 
+  const handleSetTerminalAppearance = useCallback((
+    id: string,
+    appearance: Pick<TerminalInstance, 'backgroundColor' | 'textColor' | 'tabBackgroundColor' | 'tabTextColor'>
+  ) => {
+    workspaceStore.setTerminalAppearance(id, appearance)
+  }, [])
+
   const handleReorderTerminals = useCallback((fromIndex: number, toIndex: number) => {
     workspaceStore.reorderTerminals(workspace.id, fromIndex, toIndex)
   }, [workspace.id])
@@ -217,8 +224,8 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
                   terminalId={terminal.id}
                   isActive={terminal.id === mainTerminal?.id}
                   workspaceIsActive={isActive}
-                  backgroundColor={workspace.backgroundColor}
-                  textColor={workspace.textColor}
+                  backgroundColor={terminal.backgroundColor || workspace.backgroundColor}
+                  textColor={terminal.textColor || workspace.textColor}
                 />
               </div>
             </div>
@@ -232,6 +239,7 @@ export function WorkspaceView({ workspace, terminals, focusedTerminalId, isActiv
         onFocus={handleFocus}
         onAddTerminal={handleAddTerminal}
         onRenameTerminal={handleRenameTerminal}
+        onSetTerminalAppearance={handleSetTerminalAppearance}
         onReorderTerminals={handleReorderTerminals}
         showAddButton={true}
       />

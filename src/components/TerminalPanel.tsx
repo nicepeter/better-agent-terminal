@@ -543,7 +543,23 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
       pendingWritesRef.current = []
       pendingBytesRef.current = 0
     }
-  }, [terminalId, backgroundColor, textColor, handleDragEnter, handleDragOver, handleDragLeave, handleDrop])
+  }, [terminalId, handleDragEnter, handleDragOver, handleDragLeave, handleDrop])
+
+  // Update only the live xterm theme. Keeping colors out of the initialization
+  // effect prevents a color change from disposing/recreating xterm or replaying
+  // its buffer.
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) return
+    const bgColor = backgroundColor || '#1f1d1a'
+    const fgColor = textColor || '#dfdbc3'
+    terminal.options.theme = {
+      ...terminal.options.theme,
+      background: bgColor,
+      foreground: fgColor,
+      cursor: fgColor
+    }
+  }, [backgroundColor, textColor])
 
   // GPU (WebGL) renderer, attached ONLY to the currently-visible terminal.
   // The DOM renderer re-lays-out every row on the main thread each scroll tick;

@@ -8,6 +8,10 @@ interface ThumbnailBarProps {
   onFocus: (id: string) => void
   onAddTerminal?: () => void
   onRenameTerminal?: (id: string, alias: string) => void
+  onSetTerminalAppearance?: (
+    id: string,
+    appearance: Pick<TerminalInstance, 'backgroundColor' | 'textColor' | 'tabBackgroundColor' | 'tabTextColor'>
+  ) => void
   onReorderTerminals?: (fromIndex: number, toIndex: number) => void
   showAddButton: boolean
 }
@@ -18,6 +22,7 @@ export function ThumbnailBar({
   onFocus,
   onAddTerminal,
   onRenameTerminal,
+  onSetTerminalAppearance,
   onReorderTerminals,
   showAddButton
 }: ThumbnailBarProps) {
@@ -64,6 +69,7 @@ export function ThumbnailBar({
             isDragOver={dragOverIndex === index}
             onClick={() => onFocus(terminal.id)}
             onRename={onRenameTerminal}
+            onSetAppearance={onSetTerminalAppearance}
             onDragStart={() => handleDragStart(index)}
             onDragEnd={handleDragEnd}
             onDragOver={() => handleDragOver(index)}
