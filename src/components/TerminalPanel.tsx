@@ -27,6 +27,10 @@ interface ContextMenu {
 // Max output retained while a terminal is hidden (older content scrolls off
 // anyway). Roughly one scrollback's worth of bytes.
 const MAX_PENDING_BYTES = 256 * 1024
+// Keep paste writes large enough that a big clipboard does not create thousands
+// of timers/IPC calls, but bounded so the PTY gets a chance to drain between
+// writes. 16 KiB is also comfortably below Electron's IPC message limits.
+const PASTE_CHUNK_SIZE = 16 * 1024
 
 export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive = true, backgroundColor, textColor }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -40,6 +44,8 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
   const visibleRef = useRef(false)
   const pendingWritesRef = useRef<string[]>([])
   const pendingBytesRef = useRef(0)
+  const pasteQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const pasteGenerationRef = useRef(0)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -48,31 +54,53 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
 
   const writeToPty = useCallback((data: string) => {
     workspaceStore.markTerminalInteraction(terminalId)
-    window.electronAPI.pty.write(terminalId, data)
+    return window.electronAPI.pty.write(terminalId, data)
   }, [terminalId])
 
-  // Handle paste with text size checking
+  // Serialize large pastes. The old implementation eagerly allocated one
+  // setTimeout per 1,000 characters and delayed each one by 50 ms, making a
+  // 1 MB paste take about 50 seconds while thousands of callbacks and echoed
+  // output accumulated in the renderer.
   const handlePasteText = useCallback((text: string) => {
     if (!text) return
+    const terminal = terminalRef.current
+    // Match xterm's native paste behavior: normalize browser/Windows newlines
+    // and preserve bracketed-paste mode so multiline logs are inserted as one
+    // edit instead of being executed line-by-line by shells that support it.
+    const normalizedText = text.replace(/\r?\n/g, '\r')
+    const pasteText = terminal?.modes.bracketedPasteMode
+      ? `\x1b[200~${normalizedText}\x1b[201~`
+      : normalizedText
+    const generation = pasteGenerationRef.current
 
-    // For very long text (> 2000 chars), split into smaller chunks
-    if (text.length > 2000) {
-      const chunks = []
-      for (let i = 0; i < text.length; i += 1000) {
-        chunks.push(text.slice(i, i + 1000))
-      }
+    pasteQueueRef.current = pasteQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        for (let start = 0; start < pasteText.length;) {
+          if (generation !== pasteGenerationRef.current) return
 
-      // Send chunks with small delays to prevent overwhelming the terminal
-      chunks.forEach((chunk, index) => {
-        setTimeout(() => {
-          writeToPty(chunk)
-        }, index * 50) // 50ms delay between chunks
+          let end = Math.min(start + PASTE_CHUNK_SIZE, pasteText.length)
+          // Do not split a UTF-16 surrogate pair across two IPC writes.
+          if (end < pasteText.length && /[\uD800-\uDBFF]/.test(pasteText[end - 1])) end++
+          await writeToPty(pasteText.slice(start, end))
+          start = end
+
+          // Yield between chunks so echoed PTY output, painting and user input
+          // can run even when the main-process write acknowledgement is fast.
+          if (start < pasteText.length) {
+            await new Promise<void>((resolve) => setTimeout(resolve, 0))
+          }
+        }
       })
-    } else {
-      // Normal sized text, send directly
-      writeToPty(text)
-    }
   }, [writeToPty])
+
+  // Cancel queued paste work when this panel changes identity or unmounts.
+  useEffect(() => {
+    pasteGenerationRef.current++
+    return () => {
+      pasteGenerationRef.current++
+    }
+  }, [terminalId])
 
   // Handle context menu actions
   const handleCopy = () => {
@@ -423,7 +451,8 @@ export function TerminalPanel({ terminalId, isActive = true, workspaceIsActive =
         return false
       }
       // Ctrl+Shift+V for paste
-      if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+      if (event.type === 'keydown' && event.ctrlKey && event.shiftKey && event.key === 'V') {
+        event.preventDefault()
         window.electronAPI.clipboard.readText().then((text) => {
           handlePasteText(text)
         })
